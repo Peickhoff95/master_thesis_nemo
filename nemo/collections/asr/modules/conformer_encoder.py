@@ -132,6 +132,8 @@ class ConformerEncoder(NeuralModule, Exportable):
     ):
         super().__init__()
 
+        print(f"feat_in: {feat_in}")
+
         d_ff = d_model * ff_expansion_factor
         self.d_model = d_model
         self._feat_in = feat_in
@@ -210,6 +212,8 @@ class ConformerEncoder(NeuralModule, Exportable):
                 pos_bias_v=pos_bias_v,
             )
             self.layers.append(layer)
+        #TODO: Delete
+        print(f"d_model: {d_model}, d_ff: {d_ff}, n_heads: {n_heads}")
 
         if feat_out > 0 and feat_out != self._feat_out:
             self.out_proj = nn.Linear(self._feat_out, feat_out)
@@ -278,6 +282,8 @@ class ConformerEncoder(NeuralModule, Exportable):
 
         for lth, layer in enumerate(self.layers):
             audio_signal = layer(x=audio_signal, att_mask=att_mask, pos_emb=pos_emb, pad_mask=pad_mask)
+            #TODO: Delete
+            print(f"Layer {lth} Shape: {audio_signal.shape}")
 
         if self.out_proj is not None:
             audio_signal = self.out_proj(audio_signal)

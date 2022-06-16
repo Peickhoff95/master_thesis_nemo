@@ -34,3 +34,5 @@ from nemo.collections.asr.modules.graph_decoder import ViterbiDecoderWithGraph
 from nemo.collections.asr.modules.lstm_decoder import LSTMDecoder
 from nemo.collections.asr.modules.rnn_encoder import RNNEncoder
 from nemo.collections.asr.modules.rnnt import RNNTDecoder, RNNTJoint
+from nemo.collections.asr.modules.reconstruction_encoder import ReconstructionEncoder
+from nemo.collections.asr.modules.reconstruction_modules import HighwayNetwork, ReconstructionDecoder

@@ -33,6 +33,7 @@ from nemo.collections.asr.parts.preprocessing.perturb import process_augmentatio
 from nemo.core.classes.common import PretrainedModelInfo, typecheck
 from nemo.core.neural_types import AudioSignal, LabelsType, LengthsType, LogprobsType, NeuralType, SpectrogramType
 from nemo.utils import logging
+import ipdb
 
 __all__ = ['EncDecCTCModel']
 
@@ -573,6 +574,7 @@ class EncDecCTCModel(ASRModel, ExportableEncDecModel, ASRModuleMixin):
             2) The lengths of the acoustic sequence after propagation through the encoder, of shape [B].
             3) The greedy token predictions of the model of shape [B, T] (via argmax)
         """
+        ipdb.set_trace()
         has_input_signal = input_signal is not None and input_signal_length is not None
         has_processed_signal = processed_signal is not None and processed_signal_length is not None
         if (has_input_signal ^ has_processed_signal) == False:
