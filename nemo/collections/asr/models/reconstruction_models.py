@@ -6,6 +6,10 @@ from math import ceil
 from typing import Dict, List, Optional, Union
 
 import ipdb
+from matplotlib import pyplot as plt
+from torch.utils.tensorboard._utils import figure_to_image
+import numpy as np
+
 import torch
 from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning import Trainer
@@ -24,6 +28,7 @@ from nemo.core.neural_types import AudioSignal, LabelsType, LengthsType, Logprob
 from nemo.utils import logging
 
 from nemo.collections.tts.losses.stftlosses import LogSTFTMagnitudeLoss
+from torch.nn.functional import l1_loss
 
 from abc import ABC, abstractmethod
 from typing import List
@@ -63,12 +68,27 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin):
         self.encoder = ReconstructionModel.from_config_dict(self._cfg.encoder)
         self.decoder = ReconstructionModel.from_config_dict(self._cfg.decoder)
 
-        self.loss = LogSTFTMagnitudeLoss()
+        self.loss = l1_loss
 
         if hasattr(self._cfg, 'spec_augment') and self._cfg.spec_augment is not None:
             self.spec_augmentation = EncDecCTCModel.from_config_dict(self._cfg.spec_augment)
         else:
             self.spec_augmentation = None
+
+        if hasattr(self._cfg, 'load_conformer_weights') and self._cfg.load_conformer_weights is not None:
+            self.load_state_dict(
+                torch.load(
+                    self._cfg.load_conformer_weights,
+                    map_location=torch.device(self.device)),
+                strict=False,
+            )
+            print("Pre-trained Conformer weights loaded")
+        if hasattr(self._cfg, 'freeze_conformer') and self._cfg.freeze_conformer is not None and self._cfg.freeze_conformer:
+            for param in self.encoder.parameters():
+                param.requires_grad = False
+            for param in self.encoder.weighted_sum.parameters():
+                param.requires_grad = True
+            print("Conformer weights frozen")
 
         # Setup optional Optimization flags
         #self.setup_optimization_flags()
@@ -238,39 +258,119 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin):
                 f"{self} Arguments ``input_signal`` and ``input_signal_length`` are mutually exclusive "
                 " with ``processed_signal`` and ``processed_signal_len`` arguments."
             )
-        print(f"input shape: {input_signal.shape}")
+        #print(f"input shape: {input_signal.shape}")
 
         #if not has_processed_signal:
         #    processed_signal, processed_signal_length = self.preprocessor(
         #        input_signal=input_signal, length=input_signal_length,
         #    )
 
-        print(f"preprocessed shape: {processed_signal.shape}")
+        processed_signal = input_signal
+        processed_signal_length = input_signal_length
+        #print(f"preprocessed shape: {processed_signal.shape}")
 
         if self.spec_augmentation is not None and self.training:
             processed_signal = self.spec_augmentation(input_spec=processed_signal, length=processed_signal_length)
 
         encoded, encoded_len = self.encoder(audio_signal=processed_signal, length=processed_signal_length)
-        print(f"encoded shape: {encoded.shape}")
+        #print(f"encoded shape: {encoded.shape}")
         log_probs = self.decoder(encoder_output=encoded)
-        print(f"decoded shape: {log_probs.shape}")
-        greedy_predictions = log_probs.argmax(dim=-1, keepdim=False)
+        #print(f"decoded shape: {log_probs.shape}")
+        #greedy_predictions = log_probs.argmax(dim=-1, keepdim=False)
 
-        return log_probs, encoded_len, greedy_predictions
+        return log_probs, encoded_len
 
     def reconstruct(self, path2audio_files: List[str], batch_size: int = 1):
         pass
 
-############################################################################
-#Delete Later
+
+    # PTL-specific methods
+    def training_step(self, batch, batch_nb):
+        signal, target, signal_len = batch
+        prediction, encoded_len = self.forward(input_signal=signal, input_signal_length=signal_len)
+
+        if target.shape[2] != prediction.shape[2]:
+            target = torch.nn.functional.pad(target, (0, prediction.shape[2]-target.shape[2]), 'constant', 0.0)
+
+        mask = torch.zeros(target.shape).to(self.device)
+        for e,e_len in enumerate(encoded_len):
+            mask[e,:e_len,:] = 1
+        prediction = prediction * mask
+        loss_value = self.loss(
+            prediction, target, reduction='sum'
+        )
+
+        tensorboard_logs = {'train_loss': loss_value, 'learning_rate': self._optimizer.param_groups[0]['lr']}
+
+        if hasattr(self, '_trainer') and self._trainer is not None:
+            log_every_n_steps = self._trainer.log_every_n_steps
+        else:
+            log_every_n_steps = 1
+
+        return {'loss': loss_value, 'log': tensorboard_logs}
+
+    def validation_step(self, batch, batch_idx, dataloader_idx=0):
+        signal, target, signal_len = batch
+        prediction, encoded_len = self.forward(input_signal=signal, input_signal_length=signal_len)
+
+        if target.shape[2] != prediction.shape[2]:
+            target = torch.nn.functional.pad(target, (0, prediction.shape[2]-target.shape[2]), 'constant', 0.0)
+
+        loss_value = self.loss(
+            prediction, target, reduction='sum'
+        )
+
+        plt.switch_backend('agg')
+        fig_pred = plt.figure()
+        plt.pcolormesh(prediction[0].cpu().detach().numpy())
+        plt.colorbar()
+        fig_pred = figure_to_image(fig_pred, close=True)
+        fig_target = plt.figure()
+        plt.pcolormesh(target[0].cpu().detach().numpy())
+        plt.colorbar()
+        fig_target = figure_to_image(fig_target, close=True)
+
+        return {
+            'val_loss': loss_value,
+            'pred_spec': fig_pred,
+            'target_spec': fig_target,
+        }
+
+    def test_step(self, batch, batch_idx, dataloader_idx=0):
+        logs = self.validation_step(batch, batch_idx, dataloader_idx=dataloader_idx)
+        test_logs = {
+            'test_loss': logs['val_loss'],
+        }
+        return test_logs
+
+    def multi_validation_epoch_end(self, outputs, dataloader_idx: int = 0):
+        val_loss_mean = torch.stack([x['val_loss'] for x in outputs[:10]]).mean()
+        pred_specs = [x['pred_spec'] for x in outputs]
+        target_specs = [x['target_spec'] for x in outputs]
+        tensorboard_logs = {'val_loss': val_loss_mean}
+        #Log spectograms
+        self.trainer.logger.experiment.add_image('predicted_val_spectogram', np.stack(pred_specs), global_step=self.global_step, dataformats='NCHW')
+        self.trainer.logger.experiment.add_image('target_val_spectogram', np.stack(target_specs), global_step=self.global_step, dataformats='NCHW')
+        #Log weighted sum
+        self.trainer.logger.experiment.add_histogram('weighted_sum/weights', self.encoder.weighted_sum.weight, global_step=self.global_step)
+        #self.trainer.logger.experiment.add_histogram('weighted_sum/bias', self.encoder.weighted_sum.bias, global_step=self.global_step)
+        return {'val_loss': val_loss_mean, 'log': tensorboard_logs}
+
+    def multi_test_epoch_end(self, outputs, dataloader_idx: int = 0):
+        val_loss_mean = torch.stack([x['test_loss'] for x in outputs]).mean()
+        tensorboard_logs = {'test_loss': val_loss_mean}
+        return {'test_loss': val_loss_mean, 'log': tensorboard_logs}
+
+    ############################################################################
+    #Delete Later
     @torch.no_grad()
     def transcribe(
-        self,
-        paths2audio_files: List[str],
-        batch_size: int = 4,
-        logprobs: bool = False,
-        return_hypotheses: bool = False,
-        num_workers: int = 0,
+            self,
+            paths2audio_files: List[str],
+            batch_size: int = 4,
+            logprobs: bool = False,
+            return_hypotheses: bool = False,
+            num_workers: int = 0,
     ) -> List[str]:
         """
         Uses greedy decoding to transcribe audio files. Use this method for debugging and prototyping.

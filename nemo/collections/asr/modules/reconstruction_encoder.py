@@ -71,7 +71,7 @@ class ReconstructionEncoder(NeuralModule, Exportable):
             dropout=0.1,
             dropout_emb=0.1,
             dropout_att=0.0,
-            wsum_bias=True,
+            wsum_bias=False,
     ):
         super().__init__()
 

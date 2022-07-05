@@ -78,8 +78,8 @@ class AudioToAudioDataset(Dataset):
         """Returns definitions of module output ports.
                """
         return {
-            'audio_input_signal': NeuralType(('B', 'T'), AudioSignal()),
-            'audio_output_signal': NeuralType(('B', 'T'), AudioSignal()),
+            'audio_input_signal': NeuralType(('B', 'D', 'T'), AudioSignal()),
+            'audio_output_signal': NeuralType(('B', 'D', 'T'), AudioSignal()),
             'a_sig_length': NeuralType(tuple('B'), LengthsType())
             
         }
@@ -131,16 +131,17 @@ class AudioToAudioDataset(Dataset):
         )
 
         fi, ft, fl = features_input, features_target, torch.tensor(features_input.shape[0]).long()
-        ipdb.set_trace()
+        fi = fi[None, :]
+        ft = ft[None, :]
+        fl = fl[None]
         if self.preprocessor is not None:
             processed_input_signal, processed_signal_length = self.preprocessor(
-                input_signal=fi[None, :], length=fl,
+                input_signal=fi, length=fl,
             )
             processed_target_signal, _ = self.preprocessor(
-                input_signal=ft[None, :], length=fl.tolist(),
+                input_signal=ft, length=fl,
             )
-            print(f"shape of signal: {processed_input_signal.shape}")
-            fi, ft, fl = processed_input_signal, processed_target_signal, processed_signal_length
+            fi, ft, fl = processed_input_signal[0], processed_target_signal[0], processed_signal_length[0]
 
         output = fi, ft, fl,
 

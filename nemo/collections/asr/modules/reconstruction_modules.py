@@ -1,6 +1,7 @@
 import math
 from collections import OrderedDict
 
+import ipdb
 import torch
 import torch.distributed
 import torch.nn as nn
@@ -134,7 +135,8 @@ class ReconstructionDecoder(NeuralModule, Exportable):
         network_outputs = []
         for network in self.highway_networks:
             network_outputs.append(network(encoder_output))
-        decoder_output = torch.cat(network_outputs, 1)
+        decoder_output = torch.cat(network_outputs, -1)
+        decoder_output = decoder_output.reshape([decoder_output.shape[0],-1,self._feat_out])
         return torch.transpose(decoder_output, 1, 2)
 
     def input_example(self, max_batch=1, max_dim=256):
