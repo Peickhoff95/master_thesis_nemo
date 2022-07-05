@@ -83,12 +83,19 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin):
                 strict=False,
             )
             print("Pre-trained Conformer weights loaded")
+
         if hasattr(self._cfg, 'freeze_conformer') and self._cfg.freeze_conformer is not None and self._cfg.freeze_conformer:
             for param in self.encoder.parameters():
                 param.requires_grad = False
+            print("Conformer weights frozen")
+
+        if hasattr(self._cfg,'freeze_wsum') and self._cfg.freeze_wsum is not None and self._cfg.freeze_wsum:
+            for param in self.encoder.weighted_sum.parameters():
+                param.requires_grad = False
+            print("Weighted Sum weights frozen")
+        else:
             for param in self.encoder.weighted_sum.parameters():
                 param.requires_grad = True
-            print("Conformer weights frozen")
 
         # Setup optional Optimization flags
         #self.setup_optimization_flags()
@@ -321,19 +328,24 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin):
         )
 
         plt.switch_backend('agg')
-        fig_pred = plt.figure()
+        fig_spec = plt.figure()
+        plt.subplot(3, 1, 1)
+        plt.title('Noisy')
+        plt.pcolormesh(signal[0].cpu().detach().numpy())
+        plt.colorbar()
+        plt.subplot(3, 1, 2)
+        plt.title('Prediction')
         plt.pcolormesh(prediction[0].cpu().detach().numpy())
         plt.colorbar()
-        fig_pred = figure_to_image(fig_pred, close=True)
-        fig_target = plt.figure()
+        plt.subplot(3, 1, 3)
+        plt.title('Clean')
         plt.pcolormesh(target[0].cpu().detach().numpy())
         plt.colorbar()
-        fig_target = figure_to_image(fig_target, close=True)
+        fig_spec = figure_to_image(fig_spec, close=True)
 
         return {
             'val_loss': loss_value,
-            'pred_spec': fig_pred,
-            'target_spec': fig_target,
+            'spectograms': fig_spec,
         }
 
     def test_step(self, batch, batch_idx, dataloader_idx=0):
@@ -344,16 +356,19 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin):
         return test_logs
 
     def multi_validation_epoch_end(self, outputs, dataloader_idx: int = 0):
-        val_loss_mean = torch.stack([x['val_loss'] for x in outputs[:10]]).mean()
-        pred_specs = [x['pred_spec'] for x in outputs]
-        target_specs = [x['target_spec'] for x in outputs]
+        val_loss_mean = torch.stack([x['val_loss'] for x in outputs]).mean()
+        specs = [x['spectograms'] for x in outputs[:10]]
         tensorboard_logs = {'val_loss': val_loss_mean}
         #Log spectograms
-        self.trainer.logger.experiment.add_image('predicted_val_spectogram', np.stack(pred_specs), global_step=self.global_step, dataformats='NCHW')
-        self.trainer.logger.experiment.add_image('target_val_spectogram', np.stack(target_specs), global_step=self.global_step, dataformats='NCHW')
+        self.trainer.logger.experiment.add_image('spectograms', np.stack(specs), global_step=self.global_step, dataformats='NCHW')
         #Log weighted sum
+        plt.switch_backend('agg')
+        fig_wsum = plt.figure()
+        plt.bar(range(self.encoder.weighted_sum.weight.shape[1]), self.encoder.weighted_sum.weight[0].cpu().detach().numpy())
+        self.trainer.logger.experiment.add_image('weighted_sum/weights_bar', figure_to_image(fig_wsum, close=True), global_step=self.global_step)
         self.trainer.logger.experiment.add_histogram('weighted_sum/weights', self.encoder.weighted_sum.weight, global_step=self.global_step)
-        #self.trainer.logger.experiment.add_histogram('weighted_sum/bias', self.encoder.weighted_sum.bias, global_step=self.global_step)
+        if self._cfg.encoder.wsum_bias:
+            self.trainer.logger.experiment.add_histogram('weighted_sum/bias', self.encoder.weighted_sum.bias, global_step=self.global_step)
         return {'val_loss': val_loss_mean, 'log': tensorboard_logs}
 
     def multi_test_epoch_end(self, outputs, dataloader_idx: int = 0):
