@@ -304,9 +304,8 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin):
             mask[e,:e_len,:] = 1
         prediction = prediction * mask
         loss_value = self.loss(
-            prediction, target, reduction='sum'
+            prediction, target, reduction='mean'
         )
-
         tensorboard_logs = {'train_loss': loss_value, 'learning_rate': self._optimizer.param_groups[0]['lr']}
 
         if hasattr(self, '_trainer') and self._trainer is not None:
@@ -354,6 +353,23 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin):
             'test_loss': logs['val_loss'],
         }
         return test_logs
+
+#    def validation_epoch_end(self, outputs, dataloader_idx: int = 0):
+#        val_loss_mean = torch.stack([x['val_loss'] for x in outputs]).mean()
+#        specs = [x['spectograms'] for x in outputs[:10]]
+#        tensorboard_logs = {'val_loss': val_loss_mean}
+#        #Log spectograms
+#        self.trainer.logger.experiment.add_image('spectograms', np.stack(specs), global_step=self.global_step, dataformats='NCHW')
+#        #Log weighted sum
+#        plt.switch_backend('agg')
+#        fig_wsum = plt.figure()
+#        plt.bar(range(self.encoder.weighted_sum.weight.shape[1]), self.encoder.weighted_sum.weight[0].cpu().detach().numpy())
+#        self.trainer.logger.experiment.add_image('weighted_sum/weights_bar', figure_to_image(fig_wsum, close=True), global_step=self.global_step)
+#        self.trainer.logger.experiment.add_histogram('weighted_sum/weights', self.encoder.weighted_sum.weight, global_step=self.global_step)
+#        if self._cfg.encoder.wsum_bias:
+#            self.trainer.logger.experiment.add_histogram('weighted_sum/bias', self.encoder.weighted_sum.bias, global_step=self.global_step)
+#        return {'val_loss': val_loss_mean, 'log': tensorboard_logs}
+
 
     def multi_validation_epoch_end(self, outputs, dataloader_idx: int = 0):
         val_loss_mean = torch.stack([x['val_loss'] for x in outputs]).mean()
