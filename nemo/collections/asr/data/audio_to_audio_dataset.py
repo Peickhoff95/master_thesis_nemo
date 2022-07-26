@@ -55,7 +55,11 @@ def inject_dataloader_value_from_model_config(model_cfg: dict, dataloader_cfg: D
         with open_dict(dataloader_cfg):
             dataloader_cfg[key] = model_cfg[key]
 
-def get_audio_dataset(config: dict, augmentor: Optional['AudioAugmentor'] = None, preprocessor: Optional['AudioPreprocessor'] = None) -> audio_to_audio.AudioToAudioDataset:
+def get_audio_dataset(
+        config: dict,
+        tokenizer,
+        augmentor: Optional['AudioAugmentor'] = None,
+        preprocessor: Optional['AudioPreprocessor'] = None) -> audio_to_audio.AudioToAudioDataset:
     """
     Instantiates an AudioToAudioDataset.
 
@@ -70,6 +74,7 @@ def get_audio_dataset(config: dict, augmentor: Optional['AudioAugmentor'] = None
 
     dataset = audio_to_audio.AudioToAudioDataset(
         manifest_filepath=config['manifest_filepath'],
+        tokenizer=tokenizer,
         sample_rate=config['sample_rate'],
         int_values=config.get('int_values', False),
         augmentor=augmentor,

@@ -25,6 +25,7 @@ import os
 import subprocess
 import zipfile
 import urllib.request
+import re
 
 from sox import Transformer
 from tqdm import tqdm
@@ -120,10 +121,12 @@ def __process_metadata(data, wav_path_input: str, wav_path_target: str, txt_path
     entries = []
     file_name, noise_type, snr = data
 
+    pattern = r'[^a-zA-Z\ ]'
     transcript_text = ""
     with open(os.path.join(txt_path, file_name + ".txt"), "r") as f:
         for line in f:
-            transcript_text += line.strip()
+            line = line.replace("'", " ")
+            transcript_text += re.sub(pattern, '', line.strip().lower())
 
     wav_file_input = os.path.join(wav_path_input, file_name + ".wav")
     wav_file_target = os.path.join(wav_path_target, file_name + ".wav")

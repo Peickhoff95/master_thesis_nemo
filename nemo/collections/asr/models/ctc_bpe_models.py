@@ -226,6 +226,7 @@ class EncDecCTCModelBPE(EncDecCTCModel, ASRBPEMixin):
             raise ValueError("`cfg` must have `tokenizer` config to create a tokenizer !")
 
         # Setup the tokenizer
+
         self._setup_tokenizer(cfg.tokenizer)
 
         # Initialize a dummy vocabulary

@@ -20,7 +20,7 @@ model:
     shuffle_n: 2048
     is_tarred: false
   validation_ds:
-    manifest_filepath: /home/patrick/Projects/Datasets/NSD/testset_txt.json
+    manifest_filepath: /home/patrick/Projects/Datasets/NSD/testset_txt_processed.json
     sample_rate: 16000
     batch_size: 8
     shuffle: false
@@ -29,7 +29,7 @@ model:
     use_start_end_token: false
     is_tarred: false
   test_ds:
-    manifest_filepath: /home/patrick/Projects/Datasets/NSD/testset_txt.json
+    manifest_filepath: /home/patrick/Projects/Datasets/NSD/testset_txt_processed.json
     sample_rate: 16000
     batch_size: 8
     shuffle: false
@@ -37,6 +37,9 @@ model:
     pin_memory: true
     use_start_end_token: false
     is_tarred: false
+  tokenizer:
+    dir: /home/patrick/Projects/master_thesis_nemo/experiments/tokenizers/librispeech_tokenizer_wpe_v128
+    type: wpe
   preprocessor:
     _target_: nemo.collections.asr.modules.AudioToMelSpectrogramPreprocessor
     sample_rate: 16000
