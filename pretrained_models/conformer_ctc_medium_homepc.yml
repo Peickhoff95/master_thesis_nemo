@@ -3,11 +3,11 @@ name: "Conformer-Reconstruction-Medium"
 model:
   sample_rate: 16000
   log_prediction: true
-  load_conformer_weights: /data/4eickhof/repos/master_thesis_nemo/pretrained_models/stt_en_conformer_ctc_medium.pt
+  load_conformer_weights: /home/patrick/Projects/master_thesis_nemo/pretrained_models/stt_en_conformer_ctc_medium.pt
   freeze_conformer: true
   freeze_wsum: false
   train_ds:
-    manifest_filepath: /data/4eickhof/data/NSD/trainset_28spk_txt.json
+    manifest_filepath: /home/patrick/Projects/Datasets/NSD/trainset_28spk_txt.json
     sample_rate: 16000
     batch_size: 32
     shuffle: true
@@ -20,7 +20,7 @@ model:
     shuffle_n: 2048
     is_tarred: false
   validation_ds:
-    manifest_filepath: /data/4eickhof/data/NSD/testset_txt.json
+    manifest_filepath: /home/patrick/Projects/Datasets/NSD/testset_txt.json
     sample_rate: 16000
     batch_size: 32
     shuffle: false
@@ -29,7 +29,7 @@ model:
     use_start_end_token: false
     is_tarred: false
   test_ds:
-    manifest_filepath: /data/4eickhof/data/NSD/testset_txt.json
+    manifest_filepath: /home/patrick/Projects/Datasets/NSD/testset_txt.json
     sample_rate: 16000
     batch_size: 32
     shuffle: false
@@ -38,7 +38,7 @@ model:
     use_start_end_token: false
     is_tarred: false
   tokenizer:
-    dir: /data/4eickhof/repos/master_thesis_nemo/experiments/tokenizers/librispeech_tokenizer_wpe_v128
+    dir: /home/patrick/Projects/master_thesis_nemo/experiments/tokenizers/librispeech_tokenizer_wpe_v128
     type: wpe 
   preprocessor:
     _target_: nemo.collections.asr.modules.AudioToMelSpectrogramPreprocessor
@@ -123,7 +123,7 @@ trainer:
   logger: false  # Provided by exp_manager
 
 exp_manager:
-  exp_dir: /data/4eickhof/repos/master_thesis_nemo/experiments
+  exp_dir: /home/patrick/Projects/master_thesis_nemo/experiments
   name: ${name}
   create_tensorboard_logger: true
   create_checkpoint_callback: true

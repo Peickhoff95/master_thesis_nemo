@@ -23,6 +23,7 @@ from nemo.collections.asr.models.ctc_models import EncDecCTCModel
 from nemo.collections.asr.models.ctc_bpe_models import EncDecCTCModelBPE
 from nemo.collections.asr.models.asr_model import ASRModel, ExportableEncDecModel
 from nemo.collections.asr.parts.mixins import ASRBPEMixin
+from nemo.collections.asr.losses.ctc import CTCLoss
 
 from nemo.collections.asr.data import audio_to_text_dataset, audio_to_audio_dataset
 from nemo.core.classes.common import PretrainedModelInfo, typecheck
@@ -545,8 +546,6 @@ class ReconstructionASRModel(ReconstructionModel):
         if trainer is not None:
             self.world_size = trainer.world_size
 
-        self._setup_tokenizer(cfg.tokenizer)
-
         super().__init__(cfg=cfg.ReconstructionModel, trainer=trainer)
         self.ASRModel = EncDecCTCModelBPE(cfg=cfg.ASRModel, trainer=trainer)
 
@@ -564,6 +563,10 @@ class ReconstructionASRModel(ReconstructionModel):
                 strict=True,
             )
             print("Pre-trained ASR weights loaded")
+
+        if hasattr(self._cfg, 'freeze_ASR') and self._cfg.freeze_ASR is not None:
+            self.ASRModel.freeze()
+            print('ASR model weights frozen')
 
     @typecheck()
     def forward(
@@ -601,6 +604,8 @@ class ReconstructionASRModel(ReconstructionModel):
                 " with ``processed_signal`` and ``processed_signal_len`` arguments."
             )
 
+        processed_signal = input_signal
+
         if self.spec_augmentation is not None and self.training:
             processed_signal = self.spec_augmentation(input_spec=input_signal, length=input_signal_length)
 
@@ -608,7 +613,7 @@ class ReconstructionASRModel(ReconstructionModel):
         log_spec = self.decoder(encoder_output=encoded)
 
         # __import__('ipdb').set_trace()
-        log_probs, encoded_len, greedy_predictions = asr_model(
+        log_probs, encoded_len, greedy_predictions = self.ASRModel(
             processed_signal=log_spec, processed_signal_length=input_signal_length
         )
 
@@ -631,14 +636,14 @@ class ReconstructionASRModel(ReconstructionModel):
             log_every_n_steps = 1
 
         if (batch_nb + 1) % log_every_n_steps == 0:
-            self._wer.update(
+            self.ASRModel._wer.update(
                 predictions=predictions,
                 targets=transcript,
                 target_lengths=transcript_len,
                 predictions_lengths=encoded_len,
             )
-            wer, _, _ = self._wer.compute()
-            self._wer.reset()
+            wer, _, _ = self.ASRModel._wer.compute()
+            self.ASRModel._wer.reset()
             tensorboard_logs.update({'training_batch_wer': wer})
 
         return {'loss': loss_value, 'log': tensorboard_logs}
@@ -662,14 +667,17 @@ class ReconstructionASRModel(ReconstructionModel):
         loss_value = self.loss(
             log_probs=log_probs, targets=transcript, input_lengths=encoded_len, target_lengths=transcript_len
         )
-        self._wer.update(
+        self.ASRModel._wer.update(
             predictions=predictions, targets=transcript, target_lengths=transcript_len, predictions_lengths=encoded_len
         )
-        wer, wer_num, wer_denom = self._wer.compute()
-        self._wer.reset()
+        wer, wer_num, wer_denom = self.ASRModel._wer.compute()
+        self.ASRModel._wer.reset()
 
-        vmin = min([x.min() for x in [signal[0], log_spec[0], target[0]]])
-        vmax = max([x.max() for x in [signal[0], log_spec[0], target[0]]])
+        #vmin = min([x.min() for x in [signal[0], log_spec[0], target[0]]])
+        #vmax = max([x.max() for x in [signal[0], log_spec[0], target[0]]])
+
+        vmin  = None
+        vmax = None
 
         plt.switch_backend('agg')
         fig_spec = plt.figure()

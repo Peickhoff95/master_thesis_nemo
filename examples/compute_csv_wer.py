@@ -5,7 +5,7 @@ from custom_modules import word_error_rate as wer
 
 if __name__ == '__main__':
 
-    csv_path = '/home/patrick/Projects/master_thesis_nemo/experiments/2022-07-09_03-09-18/trainset_28spk_eval.csv'
+    csv_path = '/home/patrick/Projects/master_thesis_nemo/experiments/Conformer-Reconstruction/2022-07-06_18-41-39/trainset_56spk_eval.csv'
     
     df = pd.read_csv(csv_path)
     
@@ -44,3 +44,30 @@ if __name__ == '__main__':
     print(f'Total WER denoised: {total_wer_denoised}')
     print(f'Total WER noisy: {total_wer_noisy}')
     print(f'Total WER diff: {total_wer_diff}')
+
+    #Eval SNR groups
+    grp_snr = df.groupby(['snr'])
+    dict_snr = {'denoised': [0,1]}
+
+    for key, grp in grp_snr:
+        nwer = wer.compute_wer(grp['text'], grp['noisy_prediction'])
+        dwer = wer.compute_wer(grp['text'], grp['denoised_prediction'])
+        dict_snr[key] = [nwer, dwer]
+
+    df_snr = pd.DataFrame.from_dict(dict_snr)
+    df_snr.to_csv(csv_path.split('.')[0]+'_snr.csv', encoding='utf-8', index=False)
+    print(f'Computed WER by SNR')
+
+    #Eval noise_condition groups
+    grp_nc = df.groupby(['noise_type'])
+    dict_nc = {'denoised': [0,1]}
+
+    for key, grp in grp_nc:
+        nwer = wer.compute_wer(grp['text'], grp['noisy_prediction'])
+        dwer = wer.compute_wer(grp['text'], grp['denoised_prediction'])
+        dict_nc[key] = [nwer, dwer]
+
+    df_nc = pd.DataFrame.from_dict(dict_nc)
+    df_nc.to_csv(csv_path.split('.')[0]+'_nc.csv', encoding='utf-8', index=False)
+    print(f'Computed WER by Noise Condition')
+

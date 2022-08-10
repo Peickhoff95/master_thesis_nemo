@@ -4,18 +4,22 @@ from omegaconf import OmegaConf
 import nemo.collections.asr as nemo_asr
 from nemo.utils.exp_manager import exp_manager
 from pytorch_lightning.callbacks import ModelCheckpoint
+import re
 import pandas as pd
 from tqdm.auto import tqdm
 
 if __name__ == '__main__':
 
-    df = pd.read_json('/home/patrick/Projects/Datasets/NSD/trainset_56spk_txt.json', lines=True)
+    exp_dir = '/home/patrick/Projects/master_thesis_nemo/experiments/Conformer-Reconstruction/2022-07-06_18-41-39/'
+    manifest_path = '/home/patrick/Projects/Datasets/NSD/trainset_56spk_txt.json'
+
+    df = pd.read_json(manifest_path, lines=True)
 
     rec_config = OmegaConf.load(
         '/home/patrick/Projects/master_thesis_nemo/pretrained_models/conformer_ctc_small_homepc.yml')
     rec_model = nemo_asr.models.ReconstructionModel(cfg=rec_config.model, trainer=None)
     chkpt = torch.load(
-        '/home/patrick/Projects/master_thesis_nemo/experiments/2022-07-09_03-09-18/checkpoints/Conformer-Reconstruction--val_loss=197058.5781-epoch=90.ckpt')
+        exp_dir + 'checkpoints/Conformer-Reconstruction--val_loss=194571.6250-epoch=93.ckpt')
 
     rec_model.load_state_dict(chkpt['state_dict'])
     denoised_specs = rec_model.reconstruct(df['input'])
@@ -23,13 +27,13 @@ if __name__ == '__main__':
     del rec_model
 
     asr_config = OmegaConf.load(
-        '/home/patrick/Projects/master_thesis_nemo/pretrained_models/conformer_ctc_asr_homepc.yml')
+        '/home/patrick/Projects/master_thesis_nemo/pretrained_models/conformer_ctc_medium_asr_homepc.yml')
     asr_config.trainer.progress_bar_refresh_rate = 10
 
     # trainer = pl.Trainer(**asr_config.trainer)
     asr_model = nemo_asr.models.EncDecCTCModelBPE(cfg=asr_config.model, trainer=None)
     asr_model.load_state_dict(
-        torch.load('/home/patrick/Projects/master_thesis_nemo/pretrained_models/conformer_ctc_small.pt'))
+        torch.load('/home/patrick/Projects/master_thesis_nemo/pretrained_models/stt_en_conformer_ctc_medium.pt'))
     asr_model.eval()
     asr_model.encoder.freeze()
     asr_model.decoder.freeze()
@@ -48,8 +52,15 @@ if __name__ == '__main__':
 
     transcripts = asr_model.transcribe(df['input'])
     df['noisy_prediction'] = transcripts
-    __import__('ipdb').set_trace()
 
-    df.to_csv('/home/patrick/Projects/master_thesis_nemo/experiments/2022-07-09_03-09-18/trainset_56spk_eval.csv', encoding='utf-8', index=True )
+    df['noisy_prediction'] = df['noisy_prediction'].fillna('')
+    df['denoised_prediction'] = df['denoised_prediction'].fillna('')
+
+    pattern = r'[^a-zA-Z\ ]'
+    df['text'] = df['text'].apply(lambda x: x.replace("'", " "))
+    df['text'] = df['text'].apply(lambda x: re.sub(pattern, '', x.strip().lower()))
+    #__import__('ipdb').set_trace()
+
+    df.to_csv(exp_dir + manifest_path.split('/')[-1].split('_')[0]  + '_56spk_eval.csv', encoding='utf-8', index=True )
 
     # exp_manager(trainer, config.get("exp_manager", None))

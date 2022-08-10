@@ -5,7 +5,7 @@ from nemo.utils.exp_manager import exp_manager
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 if __name__ == "__main__":
-    config = OmegaConf.load('/data/4eickhof/repos/master_thesis_nemo/pretrained_models/conformer_ctc_small_wtmgws6.yml')
+    config = OmegaConf.load('/home/patrick/Projects/master_thesis_nemo/pretrained_models/conformer_ctc_small_homepc.yml')
     config.trainer.progress_bar_refresh_rate = 10
 
     trainer = pl.Trainer(**config.trainer)

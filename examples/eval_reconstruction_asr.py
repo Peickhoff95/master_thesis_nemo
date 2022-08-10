@@ -6,17 +6,17 @@ from nemo.utils.exp_manager import exp_manager
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 if __name__ == "__main__":
-    asr_config = OmegaConf.load('/home/patrick/Projects/master_thesis_nemo/pretrained_models/conformer_ctc_asr_homepc.yml')
+    asr_config = OmegaConf.load('/home/patrick/Projects/master_thesis_nemo/pretrained_models/conformer_ctc_medium_asr_homepc.yml')
     asr_config.trainer.progress_bar_refresh_rate = 10
 
     #trainer = pl.Trainer(**asr_config.trainer)
     asr_model = nemo_asr.models.EncDecCTCModelBPE(cfg=asr_config.model, trainer=None)
-    asr_model.load_state_dict(torch.load('/home/patrick/Projects/master_thesis_nemo/pretrained_models/conformer_ctc_small.pt'))
+    asr_model.load_state_dict(torch.load('/home/patrick/Projects/master_thesis_nemo/pretrained_models/stt_en_conformer_ctc_medium.pt'))
 
     rec_config = OmegaConf.load(
-        '/home/patrick/Projects/master_thesis_nemo/pretrained_models/conformer_ctc_small_homepc.yml')
+        '/home/patrick/Projects/master_thesis_nemo/pretrained_models/conformer_ctc_medium_asr_homepc.yml')
     rec_model = nemo_asr.models.ReconstructionModel(cfg=rec_config.model, trainer=None)
-    chkpt = torch.load('/home/patrick/Projects/master_thesis_nemo/experiments/2022-07-09_03-09-18/checkpoints/Conformer-Reconstruction--val_loss=197058.5781-epoch=90.ckpt')
+    chkpt = torch.load('/home/patrick/Projects/master_thesis_nemo/experiments/Conformer-Reconstruction-Medium/2022-07-08_02-14-11/checkpoints/Conformer-Reconstruction-Medium--val_loss=194403.6875-epoch=98.ckpt')
 
     rec_model.load_state_dict(chkpt['state_dict'])
     #exp_manager(trainer, config.get("exp_manager", None))
