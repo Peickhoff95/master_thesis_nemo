@@ -515,12 +515,12 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin, A
         self.trainer.logger.experiment.add_image('spectograms', np.stack(specs), global_step=self.global_step, dataformats='NCHW')
         #Log weighted sum
         plt.switch_backend('agg')
-        fig_wsum = plt.figure()
-        plt.bar(range(self.encoder.weighted_sum.weight.shape[1]), self.encoder.weighted_sum.weight[0].cpu().detach().numpy())
-        self.trainer.logger.experiment.add_image('weighted_sum/weights_bar', figure_to_image(fig_wsum, close=True), global_step=self.global_step)
-        self.trainer.logger.experiment.add_histogram('weighted_sum/weights', self.encoder.weighted_sum.weight, global_step=self.global_step)
-        if self._cfg.encoder.wsum_bias:
-            self.trainer.logger.experiment.add_histogram('weighted_sum/bias', self.encoder.weighted_sum.bias, global_step=self.global_step)
+       # fig_wsum = plt.figure()
+       # plt.bar(range(self.encoder.weighted_sum.weight.shape[1]), self.encoder.weighted_sum.weight[0].cpu().detach().numpy())
+       # self.trainer.logger.experiment.add_image('weighted_sum/weights_bar', figure_to_image(fig_wsum, close=True), global_step=self.global_step)
+       # self.trainer.logger.experiment.add_histogram('weighted_sum/weights', self.encoder.weighted_sum.weight, global_step=self.global_step)
+       # if self._cfg.encoder.wsum_bias:
+       #     self.trainer.logger.experiment.add_histogram('weighted_sum/bias', self.encoder.weighted_sum.bias, global_step=self.global_step)
         return {'val_loss': val_loss_mean, 'log': tensorboard_logs}
 
     def multi_test_epoch_end(self, outputs, dataloader_idx: int = 0):

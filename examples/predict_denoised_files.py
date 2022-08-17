@@ -10,8 +10,8 @@ from tqdm.auto import tqdm
 
 if __name__ == '__main__':
 
-    exp_dir = '/home/patrick/Projects/master_thesis_nemo/experiments/Conformer-Reconstruction/2022-07-06_18-41-39/'
-    manifest_path = '/home/patrick/Projects/Datasets/NSD/trainset_56spk_txt.json'
+    exp_dir = '/home/patrick/Projects/master_thesis_nemo/experiments/Conformer-Reconstruction-Unfrozen/2022-08-15_15-08-16/'
+    manifest_path = '/home/patrick/Projects/Datasets/NSD/testset_txt.json'
 
     df = pd.read_json(manifest_path, lines=True)
 
@@ -19,7 +19,7 @@ if __name__ == '__main__':
         '/home/patrick/Projects/master_thesis_nemo/pretrained_models/conformer_ctc_small_homepc.yml')
     rec_model = nemo_asr.models.ReconstructionModel(cfg=rec_config.model, trainer=None)
     chkpt = torch.load(
-        exp_dir + 'checkpoints/Conformer-Reconstruction--val_loss=194571.6250-epoch=93.ckpt')
+        exp_dir + 'checkpoints/Conformer-Reconstruction-Unfrozen--val_loss=92888.3594-epoch=238.ckpt')
 
     rec_model.load_state_dict(chkpt['state_dict'])
     denoised_specs = rec_model.reconstruct(df['input'])
@@ -61,6 +61,6 @@ if __name__ == '__main__':
     df['text'] = df['text'].apply(lambda x: re.sub(pattern, '', x.strip().lower()))
     #__import__('ipdb').set_trace()
 
-    df.to_csv(exp_dir + manifest_path.split('/')[-1].split('_')[0]  + '_56spk_eval.csv', encoding='utf-8', index=True )
+    df.to_csv(exp_dir + manifest_path.split('/')[-1].split('_txt')[0]  + '_eval.csv', encoding='utf-8', index=True )
 
     # exp_manager(trainer, config.get("exp_manager", None))

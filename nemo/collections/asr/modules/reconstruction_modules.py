@@ -114,7 +114,7 @@ class ReconstructionDecoder(NeuralModule, Exportable):
         self._feat_in = feat_in
         self._feat_out = feat_out
 
-        self.projection = nn.Linear(feat_in, feat_out)
+        self.projection_layers = torch.nn.ModuleList()
 
         self.highway_networks = torch.nn.ModuleList()
         for i in range(n_networks):
@@ -127,14 +127,15 @@ class ReconstructionDecoder(NeuralModule, Exportable):
                 gate_bias=gate_bias,
             )
             self.highway_networks.append(network)
+            self.projection_layers.append(nn.Linear(feat_in, feat_out))
 
     @typecheck()
     def forward(self, encoder_output):
         encoder_output = torch.transpose(encoder_output, 1, 2)
         encoder_output = self.projection(encoder_output)
         network_outputs = []
-        for network in self.highway_networks:
-            network_outputs.append(network(encoder_output))
+        for network, projection in zip(self.highway_networks, self.projection_layers):
+            network_outputs.append(network(projection(encoder_output)))
         decoder_output = torch.cat(network_outputs, -1)
         decoder_output = decoder_output.reshape([decoder_output.shape[0],-1,self._feat_out])
         return torch.transpose(decoder_output, 1, 2)

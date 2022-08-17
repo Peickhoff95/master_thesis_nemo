@@ -1,15 +1,15 @@
-name: "Conformer-Reconstruction"
+name: "Conformer-Reconstruction-Unfrozen"
 
 model:
   sample_rate: 16000
   log_prediction: true
   load_conformer_weights: /home/patrick/Projects/master_thesis_nemo/pretrained_models/conformer_ctc_small.pt
-  freeze_conformer: true
+  freeze_conformer: false
   freeze_wsum: false
   train_ds:
     manifest_filepath: /home/patrick/Projects/Datasets/NSD/trainset_28spk_txt.json
     sample_rate: 16000
-    batch_size: 8
+    batch_size: 16
     shuffle: true
     num_workers: 8
     pin_memory: true
@@ -22,7 +22,7 @@ model:
   validation_ds:
     manifest_filepath: /home/patrick/Projects/Datasets/NSD/testset_txt_processed.json
     sample_rate: 16000
-    batch_size: 8
+    batch_size: 16
     shuffle: false
     num_workers: 8
     pin_memory: true
@@ -31,7 +31,7 @@ model:
   test_ds:
     manifest_filepath: /home/patrick/Projects/Datasets/NSD/testset_txt_processed.json
     sample_rate: 16000
-    batch_size: 8
+    batch_size: 16
     shuffle: false
     num_workers: 8
     pin_memory: true
@@ -89,7 +89,7 @@ model:
     gate_bias: -1.0
   optim:
     name: adam
-    lr: 0.1
+    lr: 0.001
     betas:
     - 0.9
     - 0.98
@@ -97,7 +97,7 @@ model:
     sched:
       name: CosineAnnealing
       warmup_steps: Null
-      warmup_ratio: 0.05
+      warmup_ratio: 0.00
       min_lr: 1.0e-06
       last_epoch: -1
   target: nemo.collections.asr.models.ctc_bpe_models.EncDecCTCModelBPE

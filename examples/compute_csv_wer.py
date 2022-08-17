@@ -5,7 +5,7 @@ from custom_modules import word_error_rate as wer
 
 if __name__ == '__main__':
 
-    csv_path = '/home/patrick/Projects/master_thesis_nemo/experiments/Conformer-Reconstruction/2022-07-06_18-41-39/trainset_56spk_eval.csv'
+    csv_path = '/home/patrick/Projects/master_thesis_nemo/experiments/Conformer-Reconstruction-Unfrozen/2022-08-15_15-08-16/testset_eval.csv'
     
     df = pd.read_csv(csv_path)
     
