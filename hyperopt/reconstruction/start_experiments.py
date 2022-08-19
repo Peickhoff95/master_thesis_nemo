@@ -280,6 +280,9 @@ def run_experimtens(experiment_dict: ExperimentDict):
 
     for model_name, model_path in experiment_dict['models'].items():
         model_dir_path = os.path.join(experiment_dir, model_name)
+        if not os.path.isdir(model_dir_path):
+            os.makedirs(model_dir_path)
+
         _execute_hyperopt_with_minibatches(
             number_of_evals=iterations,
             model_experiment_dir=model_dir_path,
