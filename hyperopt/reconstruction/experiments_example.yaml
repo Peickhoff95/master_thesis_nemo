@@ -1,0 +1,36 @@
+# The hyperparams that the objective function shall be optimized on
+hyperparams_search_spaces:
+  min_duration_on:
+    func_name: hyperopt.hp.uniform
+    args:
+      - 'min_duration_on'
+      - 0.0
+      - 0.4
+  model.train_ds.batch_size: 
+    func_name: hyperopt.hp.choice
+    args:
+      - 'train_batch_size'
+      - [16, 32, 64]
+  model.freeze_conformer:
+    func_name: hyperopt.hp.choice
+    args:
+      - 'freeze_conformer'
+      - [true, false]
+
+
+
+# The models  are registered
+# The format is <model_name>: <path>
+# There are different model names required
+models: 
+  <name>: ???
+
+
+# The path where the experiments will be saved
+exp_dir: ???
+
+# The amount of iterations that hyperparameters are searched
+amount_search_iterations: 10
+
+# The amount of epochs that the model shall be trained
+amount_train_epochs: 10
