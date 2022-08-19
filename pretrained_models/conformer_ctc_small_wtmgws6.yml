@@ -1,4 +1,4 @@
-name: "Conformer-Reconstruction"
+name: "Conformer-Reconstruction-Small-MeanBatch-Unfrozen-HighBatch"
 
 model:
   sample_rate: 16000
@@ -9,7 +9,7 @@ model:
   train_ds:
     manifest_filepath: /data/4eickhof/data/NSD/trainset_28spk_txt.json
     sample_rate: 16000
-    batch_size: 32
+    batch_size: 64
     shuffle: true
     num_workers: 16
     pin_memory: true
@@ -22,7 +22,7 @@ model:
   validation_ds:
     manifest_filepath: /data/4eickhof/data/NSD/testset_txt.json
     sample_rate: 16000
-    batch_size: 32
+    batch_size: 64
     shuffle: false
     num_workers: 16
     pin_memory: true
@@ -31,12 +31,15 @@ model:
   test_ds:
     manifest_filepath: /data/4eickhof/data/NSD/testset_txt.json
     sample_rate: 16000
-    batch_size: 32
+    batch_size: 64
     shuffle: false
     num_workers: 16
     pin_memory: true
     use_start_end_token: false
     is_tarred: false
+  tokenizer:
+    dir: /data/4eickhof/repos/master_thesis_nemo/experiments/tokenizers/librispeech_tokenizer_wpe_v128
+    type: wpe
   preprocessor:
     _target_: nemo.collections.asr.modules.AudioToMelSpectrogramPreprocessor
     sample_rate: 16000
@@ -72,7 +75,7 @@ model:
     untie_biases: true
     pos_emb_max_len: 5000
     conv_kernel_size: 31
-    dropout: 0.1
+    dropout: 0.0
     dropout_emb: 0.0
     dropout_att: 0.1
     wsum_bias: false
@@ -90,19 +93,19 @@ model:
     betas:
     - 0.9
     - 0.98
-    weight_decay: 0.0001
-    sched:
-      name: CosineAnnealing
-      warmup_steps: Null
-      warmup_ratio: 0.0
-      min_lr: 1.0e-06
-      last_epoch: -1
+    weight_decay: 0.001
+    sched: 
+            name: CosineAnnealing
+            warmup_steps: Null
+            warmup_ratio: 0.0
+            min_lr: 1.0e-06
+            last_epoch: -1
   target: nemo.collections.asr.models.ctc_bpe_models.EncDecCTCModelBPE
 
 trainer:
   devices: -1 # number of GPUs, -1 would use all available GPUs
   num_nodes: 1
-  max_epochs: 100
+  max_epochs: 1000
   max_steps: null # computed at runtime if not set
   val_check_interval: 1.0 # Set to 0.25 to check 4 times per epoch, or an int for number of iterations
   accelerator: auto
@@ -132,8 +135,8 @@ exp_manager:
     always_save_nemo: True # saves the checkpoints as nemo files instead of PTL checkpoints
 
   # you need to set these two to True to continue the training
-  resume_if_exists: false
-  resume_ignore_no_checkpoint: false
+  resume_if_exists: False
+  resume_ignore_no_checkpoint: False
 
   # You may use this section to create a W&B logger
   create_wandb_logger: false

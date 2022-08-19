@@ -94,13 +94,13 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin, A
                 param.requires_grad = False
             print("Conformer weights frozen")
 
-        if hasattr(self._cfg,'freeze_wsum') and self._cfg.freeze_wsum is not None and self._cfg.freeze_wsum:
-            for param in self.encoder.weighted_sum.parameters():
-                param.requires_grad = False
-            print("Weighted Sum weights frozen")
-        else:
-            for param in self.encoder.weighted_sum.parameters():
-                param.requires_grad = True
+       # if hasattr(self._cfg,'freeze_wsum') and self._cfg.freeze_wsum is not None and self._cfg.freeze_wsum:
+       #     for param in self.encoder.weighted_sum.parameters():
+       #         param.requires_grad = False
+       #     print("Weighted Sum weights frozen")
+       # else:
+       #     for param in self.encoder.weighted_sum.parameters():
+       #         param.requires_grad = True
 
         # Setup optional Optimization flags
         #self.setup_optimization_flags()
@@ -435,10 +435,11 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin, A
         mask = torch.zeros(target.shape).to(self.device)
         for e,e_len in enumerate(encoded_len):
             mask[e,:e_len,:] = 1
-        prediction = prediction * mask
-        loss_value = self.loss(
-            prediction, target, reduction='mean'
-        )
+        #prediction = prediction * mask
+        #loss_value = self.loss(
+        #    prediction, target, reduction='mean'
+        #)
+        loss_value = torch.sum(torch.abs((prediction - target)*mask)) / torch.sum(mask)
         tensorboard_logs = {'train_loss': loss_value, 'learning_rate': self._optimizer.param_groups[0]['lr']}
 
         if hasattr(self, '_trainer') and self._trainer is not None:
@@ -455,10 +456,15 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin, A
         if target.shape[2] != prediction.shape[2]:
             target = torch.nn.functional.pad(target, (0, prediction.shape[2]-target.shape[2]), 'constant', 0.0)
 
-        loss_value = self.loss(
-            prediction, target, reduction='sum'
-        )
+        mask = torch.zeros(target.shape).to(self.device)
+        for e,e_len in enumerate(encoded_len):
+            mask[e,:e_len,:] = 1
+       
+       # loss_value = self.loss(
+       #     prediction, target, reduction='sum'
+       # )
 
+        loss_value = torch.sum(torch.abs((prediction - target)*mask)) / torch.sum(mask)
         vmin = min([x.min() for x in [signal[0],prediction[0],target[0]]])
         vmax = max([x.max() for x in [signal[0],prediction[0],target[0]]])
 

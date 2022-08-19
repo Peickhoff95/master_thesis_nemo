@@ -132,7 +132,7 @@ class ReconstructionDecoder(NeuralModule, Exportable):
     @typecheck()
     def forward(self, encoder_output):
         encoder_output = torch.transpose(encoder_output, 1, 2)
-        encoder_output = self.projection(encoder_output)
+        #encoder_output = self.projection(encoder_output)
         network_outputs = []
         for network, projection in zip(self.highway_networks, self.projection_layers):
             network_outputs.append(network(projection(encoder_output)))

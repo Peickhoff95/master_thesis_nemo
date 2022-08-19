@@ -159,7 +159,7 @@ class ReconstructionEncoder(NeuralModule, Exportable):
             self.layers.append(layer)
             self.projection_layers.append(nn.Linear(in_features=d_model, out_features=d_model, bias=True))
 
-        self.weighted_sum = nn.Linear(n_layers, 1, bias=wsum_bias)
+       # self.weighted_sum = nn.Linear(n_layers, 1, bias=wsum_bias)
 
         self.set_max_audio_length(self.pos_emb_max_len)
         self.use_pad_mask = True
@@ -224,13 +224,13 @@ class ReconstructionEncoder(NeuralModule, Exportable):
 
         for lth, layer in enumerate(self.layers):
             audio_signal = layer(x=audio_signal, att_mask=att_mask, pos_emb=pos_emb, pad_mask=pad_mask)
-            #layer_outputs.append(self.projection_layers[lth](audio_signal))
-            layer_outputs.append(audio_signal)
+            layer_outputs.append(self.projection_layers[lth](audio_signal))
+            #layer_outputs.append(audio_signal)
 
         layer_outputs = torch.stack(layer_outputs, -1)
         #Note: one linear layer substituted with multiple projection layers followed by sum
-        audio_signal = self.weighted_sum(layer_outputs).squeeze(-1)
-        #audio_signal = layer_outputs.sum(dim=-1)
+        #audio_signal = self.weighted_sum(layer_outputs).squeeze(-1)
+        audio_signal = layer_outputs.sum(dim=-1)
 
         #if self.out_proj is not None:
         #    audio_signal = self.out_proj(audio_signal)
