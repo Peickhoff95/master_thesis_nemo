@@ -262,7 +262,7 @@ def _execute_hyperopt_with_minibatches(number_of_evals,
 
     # We have to do that because the hyperopt.fmin function
     # expects its functions to only use one single parameter
-    objective = partial(train_loss_objective, model_config_path, amount_train_epochs, )
+    objective = partial(train_loss_objective, model_config_path, amount_train_epochs, models_path)
 
     while amount_of_exectuted_trials < number_of_evals:
         amount_of_exectuted_trials += minibatch_size
