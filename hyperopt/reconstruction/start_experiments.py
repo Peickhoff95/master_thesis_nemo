@@ -218,6 +218,7 @@ def load_experiment_dict_from_yaml(path: str) -> ExperimentDict:
 
 def _execute_hyperopt_with_minibatches(number_of_evals,
                                        model_experiment_dir:str,
+                                       model_name: str,
                                        model_config_path: str,
                                        amount_train_epochs: int,
                                        hyperparam_dict: Dict,
@@ -248,6 +249,7 @@ def _execute_hyperopt_with_minibatches(number_of_evals,
         For each model the hyperopt.trials will be saved as trials.pickle
     """
 
+    models_path = os.path.join(model_experiment_dir, model_name)
     trials_path = os.path.join(model_experiment_dir, 'trials.p')
 
 
@@ -260,7 +262,7 @@ def _execute_hyperopt_with_minibatches(number_of_evals,
 
     # We have to do that because the hyperopt.fmin function
     # expects its functions to only use one single parameter
-    objective = partial(train_loss_objective, model_config_path, amount_train_epochs)
+    objective = partial(train_loss_objective, model_config_path, amount_train_epochs, )
 
     while amount_of_exectuted_trials < number_of_evals:
         amount_of_exectuted_trials += minibatch_size
@@ -286,6 +288,7 @@ def run_experimtens(experiment_dict: ExperimentDict):
         _execute_hyperopt_with_minibatches(
             number_of_evals=iterations,
             model_experiment_dir=model_dir_path,
+            model_name=model_name,
             model_config_path=model_path,
             amount_train_epochs=amount_train_epochs,
             hyperparam_dict=experiment_dict['hyperparams_search_spaces']

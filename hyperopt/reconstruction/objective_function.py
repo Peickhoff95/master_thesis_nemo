@@ -10,10 +10,12 @@ import hyperopt
 def train_loss_objective(
     model_config_path: str,
     amount_train_epochs: int,
+    model_dir: str,
     params: Dict[str, Any]
 ):
     config = OmegaConf.load(model_config_path)
     config['trainer']['max_epochs'] = amount_train_epochs
+    config['exp_manager']['exp_dir'] = model_dir
 
     for key, value in params.items():
         traverse_config = config
@@ -28,6 +30,6 @@ def train_loss_objective(
     exp_manager(trainer, config.get("exp_manager", None))
     trainer.fit(model)
 
-    loss_dict = trainer.validate(model)[0]
+    loss_dict = trainer.validate(model, verbose=False)[0]
     return {'loss': loss_dict['val_loss'], 'status': hyperopt.STATUS_OK}
 

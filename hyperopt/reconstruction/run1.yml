@@ -1,0 +1,45 @@
+# The hyperparams that the objective function shall be optimized on
+hyperparams_search_spaces:
+  model.optim.lr:
+    func_name: hyperopt.hp.loguniform
+    args:
+      - 'learning_rate'
+      - 0.0
+      - 1
+  model.train_ds.batch_size: 
+    func_name: hyperopt.hp.choice
+    args:
+      - 'train_batch_size'
+      - [16, 32, 64]
+  model.freeze_conformer:
+    func_name: hyperopt.hp.choice
+    args:
+      - 'freeze_conformer'
+      - [true, false]
+  model.encoder.dropout:
+    func_name: hyperopt.hp.choice
+    args:
+      - 'encoder_dropout'
+      - [0.0, 0.1]
+  model.optim.sched.warmup_ratio:
+    func_name: hyperopt.hp.uniform
+    args:
+      - 'warmup_ratio'
+      - 0.0
+      - 0.2
+
+# The models  are registered
+# The format is <model_name>: <path>
+# There are different model names required
+models: 
+  ReconstructionHyperoptSmall: /data/4eickhof/repos/master_thesis_nemo/pretrained_models/hyperopt_configs/conformer_ctc_small_wtmgws6.yml
+  ReconstructionHyperoptMedium: /data/4eickhof/repos/master_thesis_nemo/pretrained_models/hyperopt_configs/conformer_ctc_medium_wtmgws6.yml   
+
+# The path where the experiments will be saved
+exp_dir: /data/4eickhof/repos/master_thesis_nemo/hyperopt/reconstruction/experiments/
+
+# The amount of iterations that hyperparameters are searched
+amount_search_iterations: 200
+
+# The amount of epochs that the model shall be trained
+amount_train_epochs: 100

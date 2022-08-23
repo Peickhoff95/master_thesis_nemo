@@ -1,13 +1,13 @@
-name: "Conformer-Reconstruction-Small-MeanBatch-Unfrozen-HighBatch"
+name: "Conformer-Reconstruction-Small-Hyperopt"
 
 model:
   sample_rate: 16000
   log_prediction: true
   load_conformer_weights: /data/4eickhof/repos/master_thesis_nemo/pretrained_models/conformer_ctc_small.pt
-  freeze_conformer: false
+  freeze_conformer: true
   freeze_wsum: false
   train_ds:
-    manifest_filepath: /data/4eickhof/data/NSD/trainset_28spk_txt.json
+    manifest_filepath: '/data/4eickhof/data/NSD/trainset_28spk_txt.json,/data/4eickhof/data/NSD/trainset_56spk_txt.json'
     sample_rate: 16000
     batch_size: 64
     shuffle: true
@@ -53,12 +53,12 @@ model:
     dither: 1.0e-05
     pad_to: 0
     stft_conv: false
-  spec_augment:
-    _target_: nemo.collections.asr.modules.SpectrogramAugmentation
-    freq_masks: 2
-    time_masks: 5
-    freq_width: 27
-    time_width: 0.05
+    #  spec_augment:
+    #_target_: nemo.collections.asr.modules.SpectrogramAugmentation
+    #freq_masks: 2
+    #time_masks: 5
+    #freq_width: 27
+    #time_width: 0.05
   encoder:
     _target_: nemo.collections.asr.modules.ReconstructionEncoder
     feat_in: 80
@@ -100,7 +100,7 @@ model:
             warmup_ratio: 0.0
             min_lr: 1.0e-06
             last_epoch: -1
-  target: nemo.collections.asr.models.ctc_bpe_models.EncDecCTCModelBPE
+  target: nemo.collections.asr.models.reconstruction_models.ReconstructionModel
 
 trainer:
   devices: 1 # number of GPUs, -1 would use all available GPUs
