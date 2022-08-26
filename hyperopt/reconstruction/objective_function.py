@@ -4,6 +4,7 @@ import pytorch_lightning as pl
 from nemo.utils.exp_manager import exp_manager
 import nemo.collections.asr as nemo_asr
 from omegaconf import OmegaConf
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 import hyperopt
 
@@ -25,7 +26,9 @@ def train_loss_objective(
 
         traverse_config[sub_keys[-1]] = value
 
-    trainer = pl.Trainer(**config.trainer)
+
+    early_stop_callback = EarlyStopping(monitor='val_loss', patience=3, verbose=True, check_finite=True)
+    trainer = pl.Trainer(**config.trainer, callbacks=[early_stop_callback])
     model = nemo_asr.models.ReconstructionModel(cfg=config.model, trainer=trainer)
     exp_manager(trainer, config.get("exp_manager", None))
     trainer.fit(model)

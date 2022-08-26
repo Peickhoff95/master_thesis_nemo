@@ -4,29 +4,18 @@ hyperparams_search_spaces:
     func_name: hyperopt.hp.loguniform
     args:
       - 'learning_rate'
-      - 0.0
-      - 1
+      - -5.0
+      - 1.0
   model.train_ds.batch_size: 
     func_name: hyperopt.hp.choice
     args:
       - 'train_batch_size'
-      - [16, 32, 64]
+      - [16,32,64]
   model.freeze_conformer:
     func_name: hyperopt.hp.choice
     args:
       - 'freeze_conformer'
-      - [true, false]
-  model.encoder.dropout:
-    func_name: hyperopt.hp.choice
-    args:
-      - 'encoder_dropout'
-      - [0.0, 0.1]
-  model.optim.sched.warmup_ratio:
-    func_name: hyperopt.hp.uniform
-    args:
-      - 'warmup_ratio'
-      - 0.0
-      - 0.2
+      - [false,true]
 
 # The models  are registered
 # The format is <model_name>: <path>
@@ -39,7 +28,7 @@ models:
 exp_dir: /data/4eickhof/repos/master_thesis_nemo/hyperopt/reconstruction/experiments/
 
 # The amount of iterations that hyperparameters are searched
-amount_search_iterations: 200
+amount_search_iterations: 20
 
 # The amount of epochs that the model shall be trained
-amount_train_epochs: 100
+amount_train_epochs: 20
