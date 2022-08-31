@@ -5,6 +5,7 @@ from nemo.utils.exp_manager import exp_manager
 import nemo.collections.asr as nemo_asr
 from omegaconf import OmegaConf
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning.callbacks import TQDMProgressBar
 
 import hyperopt
 
@@ -18,6 +19,7 @@ def train_loss_objective(
     config['trainer']['max_epochs'] = amount_train_epochs
     config['exp_manager']['exp_dir'] = model_dir
 
+    print(params)
     for key, value in params.items():
         traverse_config = config
         sub_keys = key.split('.')
@@ -28,7 +30,8 @@ def train_loss_objective(
 
 
     early_stop_callback = EarlyStopping(monitor='val_loss', patience=3, verbose=True, check_finite=True)
-    trainer = pl.Trainer(**config.trainer, callbacks=[early_stop_callback])
+    tqdm_progress_bar = TQDMProgressBar(refresh_rate=10)
+    trainer = pl.Trainer(**config.trainer, callbacks=[early_stop_callback,tqdm_progress_bar])
     model = nemo_asr.models.ReconstructionModel(cfg=config.model, trainer=trainer)
     exp_manager(trainer, config.get("exp_manager", None))
     trainer.fit(model)
