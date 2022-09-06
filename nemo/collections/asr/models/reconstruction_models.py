@@ -303,9 +303,13 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin, A
 
         return log_probs, input_signal_length
 
-    def reconstruct(self, paths2audio_files: List[str],
-                    batch_size: int = 4,
-                    num_workers: int = 0,):
+    def reconstruct(
+            self, 
+            paths2audio_files: List[str],
+            batch_size: int = 4,
+            num_workers: int = 0,
+            verbose: bool = True,
+    ):
         """
                 Generate denoised spectograms for audio files. Use this method for debugging and prototyping.
 
@@ -362,7 +366,7 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin, A
                 }
 
                 temporary_datalayer = self._setup_reconstruction_dataloader(config)
-                for test_batch in tqdm(temporary_datalayer, desc="Reconstructing"):
+                for test_batch in tqdm(temporary_datalayer, desc="Reconstructing", disable=not verbose):
                     prediction, prediction_len = self.forward(
                         input_signal=test_batch[0].to(device), input_signal_length=test_batch[2].to(device)
                     )

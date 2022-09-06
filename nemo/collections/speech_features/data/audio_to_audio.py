@@ -261,7 +261,7 @@ class AudioAudio(_Collection):
 
         df = pd.DataFrame()
         for manifest_file in manifest_files:
-            df = df.append(pd.read_json(manifest_file, lines=True))
+            df = pd.concat([df,pd.read_json(manifest_file, lines=True)])
 
         optional_columns = ['text']
         for optional_column in optional_columns:
