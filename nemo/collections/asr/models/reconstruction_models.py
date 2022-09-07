@@ -92,8 +92,12 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin, A
         if hasattr(self._cfg, 'freeze_conformer') and self._cfg.freeze_conformer is not None and self._cfg.freeze_conformer:
             for param in self.encoder.parameters():
                 param.requires_grad = False
-            for param in self.encoder.projection_layers.parameters():
-                param.requires_grad = True
+            if hasattr(self._cfg.encoder, 'wsum') and self._cfg.encoder.wsum is not None and self._cfg.encoder.wsum:
+                for param in self.encoder.weighted_sum.parameters():
+                    param.requires_grad = True          
+            else:
+                for param in self.encoder.projection_layers.parameters():
+                    param.requires_grad = True
             print("Conformer weights frozen")
 
        # if hasattr(self._cfg,'freeze_wsum') and self._cfg.freeze_wsum is not None and self._cfg.freeze_wsum:

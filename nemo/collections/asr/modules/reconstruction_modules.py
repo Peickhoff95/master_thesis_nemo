@@ -104,7 +104,7 @@ class ReconstructionDecoder(NeuralModule, Exportable):
                  n_networks,
                  n_layers,
                  normal_bias=True,
-                 normal_activation=F.relu,
+                 normal_activation=(lambda x: x),
                  gate_activation=torch.sigmoid,
                  gate_bias=-1.
     ):
@@ -131,7 +131,7 @@ class ReconstructionDecoder(NeuralModule, Exportable):
 
     @typecheck()
     def forward(self, encoder_output):
-        encoder_output = torch.transpose(encoder_output, 1, 2)
+        #encoder_output = torch.transpose(encoder_output, 1, 2)
         #encoder_output = self.projection(encoder_output)
         network_outputs = []
         for network, projection in zip(self.highway_networks, self.projection_layers):

@@ -71,6 +71,7 @@ class ReconstructionEncoder(NeuralModule, Exportable):
             dropout=0.1,
             dropout_emb=0.1,
             dropout_att=0.0,
+            wsum=False,
             wsum_bias=False,
     ):
         super().__init__()
@@ -140,26 +141,42 @@ class ReconstructionEncoder(NeuralModule, Exportable):
         else:
             raise ValueError(f"Not valid self_attention_model: '{self_attention_model}'!")
 
-
-        self.layers = nn.ModuleList()
-        self.projection_layers = nn.ModuleList()
-        for i in range(n_layers):
-            layer = ConformerLayer(
-                d_model=d_model,
-                d_ff=d_ff,
-                self_attention_model=self_attention_model,
-                n_heads=n_heads,
-                conv_kernel_size=conv_kernel_size,
-                conv_norm_type=conv_norm_type,
-                dropout=dropout,
-                dropout_att=dropout_att,
-                pos_bias_u=pos_bias_u,
-                pos_bias_v=pos_bias_v,
-            )
-            self.layers.append(layer)
-            self.projection_layers.append(nn.Linear(in_features=d_model, out_features=d_model, bias=True))
-
-       # self.weighted_sum = nn.Linear(n_layers, 1, bias=wsum_bias)
+        self.wsum = wsum
+        if self.wsum:
+            self.layers = nn.ModuleList()
+            for i in range(n_layers):
+                layer = ConformerLayer(
+                    d_model=d_model,
+                    d_ff=d_ff,
+                    self_attention_model=self_attention_model,
+                    n_heads=n_heads,
+                    conv_kernel_size=conv_kernel_size,
+                    conv_norm_type=conv_norm_type,
+                    dropout=dropout,
+                    dropout_att=dropout_att,
+                    pos_bias_u=pos_bias_u,
+                    pos_bias_v=pos_bias_v,
+                )
+                self.layers.append(layer)
+            self.weighted_sum = nn.Linear(n_layers, 1, bias=wsum_bias)
+        else:
+            self.layers = nn.ModuleList()
+            self.projection_layers = nn.ModuleList()
+            for i in range(n_layers):
+                layer = ConformerLayer(
+                    d_model=d_model,
+                    d_ff=d_ff,
+                    self_attention_model=self_attention_model,
+                    n_heads=n_heads,
+                    conv_kernel_size=conv_kernel_size,
+                    conv_norm_type=conv_norm_type,
+                    dropout=dropout,
+                    dropout_att=dropout_att,
+                    pos_bias_u=pos_bias_u,
+                    pos_bias_v=pos_bias_v,
+                )
+                self.layers.append(layer)
+                self.projection_layers.append(nn.Linear(in_features=d_model, out_features=d_model, bias=True))
 
         self.set_max_audio_length(self.pos_emb_max_len)
         self.use_pad_mask = True
@@ -222,20 +239,23 @@ class ReconstructionEncoder(NeuralModule, Exportable):
 
         layer_outputs = []
 
-        for lth, layer in enumerate(self.layers):
-            audio_signal = layer(x=audio_signal, att_mask=att_mask, pos_emb=pos_emb, pad_mask=pad_mask)
-            layer_outputs.append(self.projection_layers[lth](audio_signal))
-            #layer_outputs.append(audio_signal)
-
-        layer_outputs = torch.stack(layer_outputs, -1)
-        #Note: one linear layer substituted with multiple projection layers followed by sum
-        #audio_signal = self.weighted_sum(layer_outputs).squeeze(-1)
-        audio_signal = layer_outputs.sum(dim=-1)
+        if self.wsum:
+            for lth, layer in enumerate(self.layers):
+                audio_signal = layer(x=audio_signal, att_mask=att_mask, pos_emb=pos_emb, pad_mask=pad_mask)
+                layer_outputs.append(audio_signal)
+            layer_outputs = torch.stack(layer_outputs, -1)
+            audio_signal = self.weighted_sum(layer_outputs).squeeze(-1)
+        else:
+            for lth, layer in enumerate(self.layers):
+                audio_signal = layer(x=audio_signal, att_mask=att_mask, pos_emb=pos_emb, pad_mask=pad_mask)
+                layer_outputs.append(self.projection_layers[lth](audio_signal))
+            layer_outputs = torch.stack(layer_outputs, -1)
+            audio_signal = layer_outputs.sum(dim=-1)
 
         #if self.out_proj is not None:
         #    audio_signal = self.out_proj(audio_signal)
 
-        audio_signal = torch.transpose(audio_signal, 1, 2)
+        #audio_signal = torch.transpose(audio_signal, 1, 2)
         return audio_signal, length
 
     def update_max_seq_length(self, seq_length: int, device):
