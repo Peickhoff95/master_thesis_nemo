@@ -29,9 +29,10 @@ def train_loss_objective(
         traverse_config[sub_keys[-1]] = value
 
 
-    early_stop_callback = EarlyStopping(monitor='val_loss', patience=3, verbose=True, check_finite=True)
-    tqdm_progress_bar = TQDMProgressBar(refresh_rate=10)
-    trainer = pl.Trainer(**config.trainer, callbacks=[early_stop_callback,tqdm_progress_bar])
+    #early_stop_callback = EarlyStopping(monitor='val_loss', patience=3, verbose=True, check_finite=True)
+    #tqdm_progress_bar = TQDMProgressBar(refresh_rate=10)
+    #trainer = pl.Trainer(**config.trainer, callbacks=[early_stop_callback,tqdm_progress_bar])
+    trainer = pl.Trainer(**config.trainer)
     model = nemo_asr.models.ReconstructionModel(cfg=config.model, trainer=trainer)
     exp_manager(trainer, config.get("exp_manager", None))
     trainer.fit(model)
