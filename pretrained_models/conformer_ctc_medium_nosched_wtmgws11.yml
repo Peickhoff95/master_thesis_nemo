@@ -78,8 +78,8 @@ model:
     dropout: 0.1
     dropout_emb: 0.0
     dropout_att: 0.1
-    wsum: true
-    wsum_bias: true
+    wsum: false
+    wsum_bias: false
   decoder:
     _target_: nemo.collections.asr.modules.ReconstructionDecoder
     feat_in: 256
@@ -90,7 +90,7 @@ model:
     gate_bias: -1.0
   optim:
     name: adam
-    lr: 0.001
+    lr: 0.003147
     betas:
     - 0.9
     - 0.98
@@ -106,12 +106,12 @@ model:
 trainer:
   devices: [2,3] # number of GPUs, -1 would use all available GPUs
   num_nodes: 1
-  max_epochs: 1000
+  max_epochs: 100
   max_steps: null # computed at runtime if not set
   val_check_interval: 1.0 # Set to 0.25 to check 4 times per epoch, or an int for number of iterations
   accelerator: auto
   strategy: ddp_find_unused_parameters_false
-  accumulate_grad_batches: 1
+  accumulate_grad_batches: 8
   gradient_clip_val: 0.0
   precision: 32 # Should be set to 16 for O1 and O2 to enable the AMP.
   log_every_n_steps: 10  # Interval of logging.

@@ -1,0 +1,8 @@
+manifest_path: 
+expdir_path:
+reconstruction:
+        config_path:
+        checkpoint_path:
+asr:
+        config_path:
+        checkpoint_path:  

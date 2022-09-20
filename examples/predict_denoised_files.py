@@ -7,60 +7,76 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 import re
 import pandas as pd
 from tqdm.auto import tqdm
+from argparse import ArgumentParser
 
 if __name__ == '__main__':
 
-    exp_dir = '/home/patrick/Projects/master_thesis_nemo/experiments/Conformer-Reconstruction-Unfrozen/2022-08-15_15-08-16/'
-    manifest_path = '/home/patrick/Projects/Datasets/NSD/testset_txt.json'
+    
+    argparser = ArgumentParser()
+    argparser.add_argument('config', type=str, help='A config yaml file, like denoise_example.yml')
 
-    df = pd.read_json(manifest_path, lines=True)
+    args = argparser.parse_args()
 
-    rec_config = OmegaConf.load(
-        '/home/patrick/Projects/master_thesis_nemo/pretrained_models/conformer_ctc_small_homepc.yml')
-    rec_model = nemo_asr.models.ReconstructionModel(cfg=rec_config.model, trainer=None)
-    chkpt = torch.load(
-        exp_dir + 'checkpoints/Conformer-Reconstruction-Unfrozen--val_loss=92888.3594-epoch=238.ckpt')
+    config = OmegaConf.load(args.config)
 
-    rec_model.load_state_dict(chkpt['state_dict'])
-    denoised_specs = rec_model.reconstruct(df['input'])
+    exp_dir = config.expdir_path
+    manifest_paths = config.manifest_path
+    rec_config_path = config.reconstruction.config_path
+    rec_ckpt_path = config.reconstruction.checkpoint_path
+    asr_config_path = config.asr.config_path
+    asr_ckpt_path = config.asr.checkpoint_path
+   
+    device = torch.device('cuda:0')
 
-    del rec_model
+    for manifest_path in manifest_paths.split(','):
 
-    asr_config = OmegaConf.load(
-        '/home/patrick/Projects/master_thesis_nemo/pretrained_models/conformer_ctc_medium_asr_homepc.yml')
-    asr_config.trainer.progress_bar_refresh_rate = 10
+        df = pd.read_json(manifest_path, lines=True)
 
-    # trainer = pl.Trainer(**asr_config.trainer)
-    asr_model = nemo_asr.models.EncDecCTCModelBPE(cfg=asr_config.model, trainer=None)
-    asr_model.load_state_dict(
-        torch.load('/home/patrick/Projects/master_thesis_nemo/pretrained_models/stt_en_conformer_ctc_medium.pt'))
-    asr_model.eval()
-    asr_model.encoder.freeze()
-    asr_model.decoder.freeze()
+        rec_config = OmegaConf.load(rec_config_path)
+        rec_model = nemo_asr.models.ReconstructionModel(cfg=rec_config.model, trainer=None)
+        chkpt = torch.load(rec_ckpt_path)
 
-    hypotheses = []
-    for spec in tqdm(denoised_specs, desc='Transcribing denoised'):
-        spec_t = torch.tensor(spec)
-        spec_len = torch.stack([torch.tensor(spec.shape[1]).long()], 0)
-        logits, logits_len, greedy_predictions = asr_model.forward(processed_signal=spec_t[None, :], processed_signal_length=spec_len)
-        current_hypotheses = asr_model._wer.ctc_decoder_predictions_tensor(
-            greedy_predictions, predictions_len=logits_len, return_hypotheses=False,
-        )
-        hypotheses += current_hypotheses
+        rec_model.load_state_dict(chkpt['state_dict'])
+        rec_model.to(device)
+        denoised_specs = rec_model.reconstruct(df['input'])
 
-    df['denoised_prediction'] = hypotheses
+        del rec_model
 
-    transcripts = asr_model.transcribe(df['input'])
-    df['noisy_prediction'] = transcripts
+        asr_config = OmegaConf.load(asr_config_path)
+        asr_config.trainer.progress_bar_refresh_rate = 10
 
-    df['noisy_prediction'] = df['noisy_prediction'].fillna('')
-    df['denoised_prediction'] = df['denoised_prediction'].fillna('')
+        # trainer = pl.Trainer(**asr_config.trainer)
+        asr_model = nemo_asr.models.EncDecCTCModelBPE(cfg=asr_config.model, trainer=None)
+        asr_model.load_state_dict(
+            torch.load(asr_ckpt_path))
+        asr_model.to(torch.device('cuda:0'))
+        asr_model.eval()
+        asr_model.encoder.freeze()
+        asr_model.decoder.freeze()
 
-    pattern = r'[^a-zA-Z\ ]'
-    df['text'] = df['text'].apply(lambda x: x.replace("'", " "))
-    df['text'] = df['text'].apply(lambda x: re.sub(pattern, '', x.strip().lower()))
-    #__import__('ipdb').set_trace()
+        hypotheses = []
+        for spec in tqdm(denoised_specs, desc='Transcribing denoised'):
+            spec_t = torch.tensor(spec)
+            spec_len = torch.stack([torch.tensor(spec.shape[1]).long()], 0)
+            logits, logits_len, greedy_predictions = asr_model.forward(processed_signal=spec_t[None, :].to(device), processed_signal_length=spec_len.to(device))
+            current_hypotheses = asr_model._wer.ctc_decoder_predictions_tensor(
+                greedy_predictions, predictions_len=logits_len, return_hypotheses=False,
+            )
+            hypotheses += current_hypotheses
 
-    df.to_csv(exp_dir + manifest_path.split('/')[-1].split('_txt')[0]  + '_eval.csv', encoding='utf-8', index=True )
+        df['denoised_prediction'] = hypotheses
+
+        transcripts = asr_model.transcribe(df['input'])
+        df['noisy_prediction'] = transcripts
+
+        df['noisy_prediction'] = df['noisy_prediction'].fillna('')
+        df['denoised_prediction'] = df['denoised_prediction'].fillna('')
+
+        pattern = r'[^a-zA-Z\ ]'
+        df['text'] = df['text'].apply(lambda x: x.replace("'", " "))
+        df['text'] = df['text'].apply(lambda x: re.sub(pattern, '', x.strip().lower()))
+        #__import__('ipdb').set_trace()
+
+        df.to_csv(exp_dir + manifest_path.split('/')[-1].split('_txt')[0]  + '_eval.csv', encoding='utf-8', index=True )
 
     # exp_manager(trainer, config.get("exp_manager", None))

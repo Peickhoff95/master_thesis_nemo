@@ -1,0 +1,8 @@
+manifest_path: '/data/4eickhof/data/NSD/testset_txt.json,/data/4eickhof/data/NSD/trainset_28spk_txt.json,/data/4eickhof/data/NSD/trainset_56spk_txt.json' 
+expdir_path: '/data/4eickhof/repos/master_thesis_nemo/experiments/Conformer-Reconstruction-Medium-Hyperopt/2022-09-10_14-43-00/'
+reconstruction:
+        config_path: '/data/4eickhof/repos/master_thesis_nemo/pretrained_models/conformer_ctc_medium_nosched_wtmgws11.yml'
+        checkpoint_path: '/data/4eickhof/repos/master_thesis_nemo/experiments/Conformer-Reconstruction-Medium-Hyperopt/2022-09-10_14-43-00/checkpoints/Conformer-Reconstruction-Medium-Hyperopt--val_loss=0.1925-epoch=84.ckpt'
+asr:
+        config_path: '/data/4eickhof/repos/master_thesis_nemo/pretrained_models/conformer_ctc_medium_asr_wtmgws11.yml'
+        checkpoint_path: '/data/4eickhof/repos/master_thesis_nemo/pretrained_models/stt_en_conformer_ctc_medium.pt'

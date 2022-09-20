@@ -3,9 +3,16 @@ from omegaconf import OmegaConf
 import nemo.collections.asr as nemo_asr
 from nemo.utils.exp_manager import exp_manager
 from pytorch_lightning.callbacks import ModelCheckpoint
+from argparse import ArgumentParser
 
 if __name__ == "__main__":
-    config = OmegaConf.load('/data/4eickhof/repos/master_thesis_nemo/pretrained_models/conformer_ctc_medium_nosched_wsum_wtmgws11.yml')
+
+    argparser = ArgumentParser()
+    argparser.add_argument('config_yml', type=str, help='A run configuration yaml file')
+
+    args = argparser.parse_args()
+
+    config = OmegaConf.load(args.config_yml)
     config.trainer.progress_bar_refresh_rate = 10
 
     trainer = pl.Trainer(**config.trainer)
