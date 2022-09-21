@@ -216,6 +216,59 @@ class ASRAudioText(AudioText):
         super().__init__(ids, audio_files, durations, texts, offsets, speakers, orig_srs, langs, *args, **kwargs)
 
 
+
+class ASRSpectogrammText(_Collection):
+
+    OUTPUT_TYPE = collections.namedtuple('AudioTextEntity', 'input target duration text text_tokens noise_type snr orig_sr')
+
+    def __init__(self,
+                 manifest_files,
+                 parser,
+                 min_duration: Optional[float]=0,
+                 max_duration: Optional[float]=None
+                ) -> None:
+        output_type = self.OUTPUT_TYPE
+
+        df = pd.DataFrame()
+        for manifest_file in manifest_files:
+            df = pd.concat([df,pd.read_json(manifest_file, lines=True)])
+
+        optional_columns = ['text']
+        for optional_column in optional_columns:
+            if optional_column not in df.columns:
+                df[optional_column] = None
+        
+        filtered_min_duration = df['duration'] < min_duration
+        filtered_max_duration = df['duration'] > max_duration\
+                if max_duration != None\
+                else filtered_min_duration
+
+        filtered_duration = df.loc[filtered_max_duration | filtered_min_duration, 'duration'].sum()
+        logging.info(f'We filtered {filtered_duration} seconds of samples')
+        df = df[~(filtered_max_duration | filtered_min_duration)] #type: pd.DataFrame
+
+        data = []
+        for _, row in df.iterrows():
+
+            if row['text'] != '':
+                row['text_tokens'] = parser(row['text'])
+            else:
+                row['text_tokens'] = []
+
+            row['orig_sr'] = 16000
+            data.append(output_type(
+                row['input'],
+                row['target'],
+                row['duration'],
+                row['text'],
+                row['text_tokens'],
+                row['noise_type'],
+                row['snr'],
+                row['orig_sr']
+            ))
+
+        super().__init__(data)
+
 class SpeechLabel(_Collection):
     """List of audio-label correspondence with preprocessing."""
 
