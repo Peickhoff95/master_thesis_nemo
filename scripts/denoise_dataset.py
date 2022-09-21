@@ -9,7 +9,7 @@ from typing import List
 import pandas as pd
 from tqdm import tqdm 
 
-def denoise_audiofiles(audiofiles_paths: List[str], conf_path: str, chkpt_path: str, batch_size: int = 4, num_workers: int = 0)->npt.NDArray:
+def denoise_audiofiles(audiofiles_paths: List[str], conf_path: str, chkpt_path: str, out_dir: str, batch_size: int = 4, num_workers: int = 0)->npt.NDArray:
     """TODO: Docstring for denoise_audiofile.
 
                     :arg1: TODO
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     parser.add_argument('CONF',  type=str, help='Config YAML for Reconstruction Model')
     parser.add_argument('CHKPT',  type=str, help='Checkpoint file for Reconstruction Model')
     parser.add_argument('MANIFEST',  type=str, help='Manifest file path of dataset') 
-    parser.add_argument('OUTDIR',  type=str, help='Manifest file path of dataset')
+    parser.add_argument('OUTDIR',  type=str, help='Output directory for denoised spectogramms')
 
     parser.add_argument('--batch_size', metavar='batch_size',default=4, type=int, help='batchsize for denoising function')
     parser.add_argument('--num_workers', metavar='num_workers',default=0, type=int, help='number of workers for loading file')
@@ -59,7 +59,8 @@ if __name__ == "__main__":
     outfile_paths = denoise_audiofiles(
         manifest_df['input'],
         conf_path=conf_path, 
-        chkpt_path=chkpt_path, 
+        chkpt_path=chkpt_path,
+        out_dir=out_dir,
         batch_size=batch_size, 
         num_workers=num_workers,
         )
