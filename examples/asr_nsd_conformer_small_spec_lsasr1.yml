@@ -1,0 +1,5 @@
+manifest_path: '/home/eickhoff/data/4eickhof/data/NSD/denoised_conformer_medium_nosched/testset_txt_asr.json'
+expdir_path: '/home/eickhoff/data/4eickhof/repos/master_thesis_nemo/experiments/Conformer-Small-Spec-ASR-LibriSpeech/2022-09-24_23-38-29/'
+asr:
+        config_path: '/home/eickhoff/data/4eickhof/repos/master_thesis_nemo/pretrained_models/conformer_ctc_small_asr_spec_libri_lsasr1.yml'
+        checkpoint_path: '/home/eickhoff/data/4eickhof/repos/master_thesis_nemo/experiments/Conformer-Small-Spec-ASR-LibriSpeech/2022-09-24_23-38-29/checkpoints/Conformer-Small-Spec-ASR-LibriSpeech--val_loss=10.5428-epoch=96.ckpt'

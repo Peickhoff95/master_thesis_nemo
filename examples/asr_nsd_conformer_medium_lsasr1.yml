@@ -1,0 +1,6 @@
+manifest_path: '/home/eickhoff/data/4eickhof/data/NSD/testset_txt_asr_noisy_processed.json,/home/eickhoff/data/4eickhof/data/NSD/testset_txt_asr_clean_processed.json'
+expdir_path: '/home/eickhoff/data/4eickhof/repos/master_thesis_nemo/experiments/tmp/'
+asr:
+        config_path: '/home/eickhoff/data/4eickhof/repos/master_thesis_nemo/pretrained_models/conformer_ctc_medium_asr_lsasr1.yml'
+        checkpoint_path: '/home/eickhoff/data/4eickhof/repos/master_thesis_nemo/pretrained_models/stt_en_conformer_ctc_medium.pt'
+

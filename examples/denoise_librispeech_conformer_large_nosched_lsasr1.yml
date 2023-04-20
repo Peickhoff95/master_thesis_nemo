@@ -1,0 +1,8 @@
+manifest_path: '/home/eickhoff/data/4eickhof/data/LibriSpeech/train_clean_100.json,/home/eickhoff/data/4eickhof/data/LibriSpeech/train_clean_360.json,/home/eickhoff/data/4eickhof/data/LibriSpeech/train_other_500.json,/home/eickhoff/data/4eickhof/data/LibriSpeech/dev_clean.json,/home/eickhoff/data/4eickhof/data/LibriSpeech/dev_other.json,/home/eickhoff/data/4eickhof/data/LibriSpeech/test_clean.json,/home/eickhoff/data/4eickhof/data/LibriSpeech/test_other.json' 
+expdir_path: '/home/eickhoff/data/4eickhof/repos/master_thesis_nemo/experiments/Conformer-Reconstruction-Large-Hyperopt-Nosched/2022-09-13_00-27-38/'
+reconstruction:
+        config_path: '/home/eickhoff/data/4eickhof/repos/master_thesis_nemo/pretrained_models/conformer_ctc_large_nosched_lsasr1.yml'
+        checkpoint_path: '/home/eickhoff/data/4eickhof/repos/master_thesis_nemo/experiments/Conformer-Reconstruction-Large-Hyperopt-Nosched/2022-09-13_00-27-38/checkpoints/Conformer-Reconstruction-Large-Hyperopt-Nosched--val_loss=0.1690-epoch=95.ckpt'
+asr:
+        config_path: '/home/eickhoff/data/4eickhof/repos/master_thesis_nemo/pretrained_models/conformer_ctc_medium_asr_lsasr1.yml'
+        checkpoint_path: '/home/eickhoff/data/4eickhof/repos/master_thesis_nemo/pretrained_models/stt_en_conformer_ctc_medium.pt'

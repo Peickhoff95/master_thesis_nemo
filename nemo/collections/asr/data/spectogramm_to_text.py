@@ -114,12 +114,10 @@ class ASRSpectogrammManifestProcessor:
         self.parser = parser
 
         self.collection = collections.ASRSpectogrammText(
-            manifests_files=manifest_filepath,
+            manifest_files=manifest_filepath,
             parser=parser,
             min_duration=min_duration,
             max_duration=max_duration,
-            max_number=max_utts,
-            index_by_file_id=index_by_file_id,
         )
 
         self.eos_id = eos_id
@@ -177,7 +175,7 @@ class _SpectogrammTextDataset(Dataset):
         """Returns definitions of module output ports.
                """
         return {
-            'audio_signal': NeuralType(('B', 'T'), AudioSignal()),
+            'audio_signal': NeuralType(('B', 'D', 'T'), AudioSignal()),
             'a_sig_length': NeuralType(tuple('B'), LengthsType()),
             'transcripts': NeuralType(('B', 'T'), LabelsType()),
             'transcript_length': NeuralType(tuple('B'), LengthsType()),
@@ -227,8 +225,8 @@ class _SpectogrammTextDataset(Dataset):
         if offset is None:
             offset = 0
         
-        features = np.load(sample.input) 
-        f, fl = features, torch.tensor(features.shape[0]).long()
+        features = np.load(sample.audio_filepath) 
+        f, fl = torch.tensor(features), torch.tensor(features.shape[1]).long()
 
         t, tl = self.manifest_processor.process_text_by_sample(sample=sample)
 
@@ -283,7 +281,7 @@ class SpectogrammToCharDataset(_SpectogrammTextDataset):
         """Returns definitions of module output ports.
                """
         return {
-            'audio_signal': NeuralType(('B', 'T'), AudioSignal()),
+            'audio_signal': NeuralType(('B', 'D', 'T'), AudioSignal()),
             'a_sig_length': NeuralType(tuple('B'), LengthsType()),
             'transcripts': NeuralType(('B', 'T'), LabelsType()),
             'transcript_length': NeuralType(tuple('B'), LengthsType()),
@@ -373,7 +371,7 @@ class SpectogrammToBPEDataset(_SpectogrammTextDataset):
         """Returns definitions of module output ports.
                """
         return {
-            'audio_signal': NeuralType(('B', 'T'), AudioSignal()),
+            'audio_signal': NeuralType(('B', 'D', 'T'), AudioSignal()),
             'a_sig_length': NeuralType(tuple('B'), LengthsType()),
             'transcripts': NeuralType(('B', 'T'), LabelsType()),
             'transcript_length': NeuralType(tuple('B'), LengthsType()),

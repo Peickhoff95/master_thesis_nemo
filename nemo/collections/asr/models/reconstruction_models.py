@@ -30,7 +30,7 @@ from nemo.core.classes.common import PretrainedModelInfo, typecheck
 from nemo.core.neural_types import AudioSignal, LabelsType, LengthsType, LogprobsType, NeuralType, SpectrogramType
 from nemo.utils import logging
 
-from nemo.collections.tts.losses.stftlosses import LogSTFTMagnitudeLoss
+#from nemo.collections.tts.losses.stftlosses import LogSTFTMagnitudeLoss
 from torch.nn.functional import l1_loss
 
 from abc import ABC, abstractmethod
@@ -73,7 +73,8 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin, A
         self.encoder = ReconstructionModel.from_config_dict(self._cfg.encoder)
         self.decoder = ReconstructionModel.from_config_dict(self._cfg.decoder)
 
-        self.loss = l1_loss
+        #self.loss = l1_loss
+        self.loss = torch.nn.KLDivLoss(reduction='batchmean', log_target=True)
 
         if hasattr(self._cfg, 'spec_augment') and self._cfg.spec_augment is not None:
             self.spec_augmentation = EncDecCTCModel.from_config_dict(self._cfg.spec_augment)
@@ -395,6 +396,92 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin, A
             logging.set_verbosity(logging_level)
         return predicted_specs
 
+    def return_spectogram(
+            self,
+            paths2audio_files: List[str],
+            batch_size: int = 4,
+            num_workers: int = 0,
+            verbose: bool = True,
+    ):
+        """
+                Generate denoised spectograms for audio files. Use this method for debugging and prototyping.
+
+                Args:
+                    paths2audio_files: (a list) of paths to audio files. \
+                        Recommended length per file is between 5 and 25 seconds. \
+                        But it is possible to pass a few hours long file if enough GPU memory is available.
+                    batch_size: (int) batch size to use during inference.
+                        Bigger will result in better throughput performance but would use more memory.
+                    num_workers: (int) number of workers for DataLoader
+
+                Returns:
+                    A list of spectograms in the same order as paths2audio_files
+                """
+        if paths2audio_files is None or len(paths2audio_files) == 0:
+            return {}
+
+        predicted_specs = []
+
+        mode = self.training
+        device = next(self.parameters()).device
+        dither_value = self.preprocessor.featurizer.dither
+        pad_to_value = self.preprocessor.featurizer.pad_to
+
+        try:
+            self.preprocessor.featurizer.dither = 0.0
+            self.preprocessor.featurizer.pad_to = 0
+            self.cfg['preprocessor']['dither'] = 0.0
+            self.cfg['preprocessor']['pad_to'] = 0
+            self.eval()
+            self.encoder.freeze()
+            self.decoder.freeze()
+            logging_level = logging.get_verbosity()
+            logging.set_verbosity(logging.WARNING)
+            #Work in tmp directory - will store manifest file there
+            with tempfile.TemporaryDirectory() as tmpdir:
+                with open(os.path.join(tmpdir, 'manifest.json'), 'w', encoding='utf-8') as fp:
+                    for audio_file in paths2audio_files:
+                        entry = {
+                            'input': audio_file,
+                            'target': audio_file,
+                            'duration': 100000,
+                            'text': '',
+                            'noise_type': '',
+                            'snr': '',
+                        }
+                        fp.write(json.dumps(entry) + '\n')
+
+                config = {
+                    'paths2audio_files': paths2audio_files,
+                    'batch_size': batch_size,
+                    'temp_dir': tmpdir,
+                    'num_workers': num_workers,
+                }
+
+                temporary_datalayer = self._setup_reconstruction_dataloader(config)
+                for test_batch in tqdm(temporary_datalayer, desc="Reconstructing", disable=not verbose):
+                    prediction, prediction_len = test_batch[0], test_batch[2]
+
+                    for idx in range(prediction.shape[0]):
+                        prd = prediction[idx][:, : prediction_len[idx]]
+                        predicted_specs.append(prd.cpu().numpy())
+
+                    del prediction
+                    del prediction_len
+                    del test_batch
+
+        finally:
+            # set mode back to its original value
+            self.train(mode=mode)
+            self.preprocessor.featurizer.dither = dither_value
+            self.preprocessor.featurizer.pad_to = pad_to_value
+            self.cfg['preprocessor']['dither'] = dither_value
+            self.cfg['preprocessor']['pad_to'] = pad_to_value
+            if mode is True:
+                self.encoder.unfreeze()
+                self.decoder.unfreeze()
+            logging.set_verbosity(logging_level)
+        return predicted_specs
 
     def _setup_reconstruction_dataloader(self, config: Dict) -> 'torch.utils.data.DataLoader':
         """
@@ -449,7 +536,8 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin, A
         #loss_value = self.loss(
         #    prediction, target, reduction='mean'
         #)
-        loss_value = torch.sum(torch.abs((prediction - target)*mask)) / torch.sum(mask)
+        #loss_value = torch.sum(torch.abs((prediction - target)*mask)) / torch.sum(mask)
+        loss_value = self.loss(prediction*mask, target*mask)
         tensorboard_logs = {'train_loss': loss_value, 'learning_rate': self._optimizer.param_groups[0]['lr']}
 
         if hasattr(self, '_trainer') and self._trainer is not None:
@@ -474,7 +562,8 @@ class ReconstructionModel(ExportableEncDecModel, ModelPT, ReconstructionMixin, A
        #     prediction, target, reduction='sum'
        # )
 
-        loss_value = torch.sum(torch.abs((prediction - target)*mask)) / torch.sum(mask)
+        #loss_value = torch.sum(torch.abs((prediction - target)*mask)) / torch.sum(mask)
+        loss_value = self.loss(prediction*mask, target*mask)
         vmin = min([x.min() for x in [signal[0],prediction[0],target[0]]])
         vmax = max([x.max() for x in [signal[0],prediction[0],target[0]]])
 

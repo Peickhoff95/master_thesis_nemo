@@ -28,8 +28,8 @@ def clean_transcript(transcript: str) -> str:
 def calculate_worddist_and_wordlen(truth: str,
                                 hyp: str
                                ) -> Tuple[float, float]:
-    truth_words: List[str] = truth.split(' ')
-    hyp_words: List[str] = hyp.split(' ')
+    truth_words: List[str] = list(truth)
+    hyp_words: List[str] = list(hyp)
 
     dist = editdistance.distance(truth_words, hyp_words)
     wordlen = len(truth_words)
@@ -55,3 +55,34 @@ def calculate_wer_from_list(truths: List,
     truth: str = ','.join(truths)
     hyp: str = ','.join(hypotheses)
     return calculate_wer(truth, hyp)
+
+def calculate_chardist_and_charlen(truth: str,
+                                hyp: str
+                               ) -> Tuple[float, float]:
+    truth_chars: List[str] = truth.split()
+    hyp_chars: List[str] = hyp.split()
+
+    dist = editdistance.distance(truth_chars, hyp_chars)
+    charlen = len(truth_chars)
+    return dist, charlen
+
+def calculate_cer(truth: str,
+                   hyp: str
+                  ) -> float:
+    dist, charlen = calculate_chardist_and_charlen(truth, hyp)
+    return dist/charlen
+
+def calculate_cer_from_series(series: pd.Series,
+                               column_truth: str,
+                               column_hyp: str
+                              ) -> float:
+    truth: str = series[column_truth]
+    hyp: str = series[column_hyp]
+    return calculate_cer(truth, hyp)
+
+def calculate_cer_from_list(truths: List,
+                               hypotheses: List,
+                              ) -> float:
+    truth: str = ','.join(truths)
+    hyp: str = ','.join(hypotheses)
+    return calculate_cer(truth, hyp)

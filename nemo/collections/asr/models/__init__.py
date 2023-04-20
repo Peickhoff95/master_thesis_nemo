@@ -17,8 +17,11 @@ from nemo.collections.asr.models.classification_models import EncDecClassificati
 from nemo.collections.asr.models.clustering_diarizer import ClusteringDiarizer
 from nemo.collections.asr.models.ctc_bpe_models import EncDecCTCModelBPE
 from nemo.collections.asr.models.ctc_models import EncDecCTCModel
+from nemo.collections.asr.models.ctc_spectogramm_models import EncDecCTCSpecModel
+from nemo.collections.asr.models.ctc_spectogramm_bpe_models import EncDecCTCSpecModelBPE
 from nemo.collections.asr.models.k2_sequence_models import EncDecK2SeqModel, EncDecK2SeqModelBPE
 from nemo.collections.asr.models.label_models import EncDecSpeakerLabelModel
 from nemo.collections.asr.models.rnnt_bpe_models import EncDecRNNTBPEModel
 from nemo.collections.asr.models.rnnt_models import EncDecRNNTModel
 from nemo.collections.asr.models.reconstruction_models import ReconstructionModel, ReconstructionASRModel
+from nemo.collections.asr.models.whisper_spectogramm_models import ReconstructionWhisperASRModel, ReconstructionWhisperModel 

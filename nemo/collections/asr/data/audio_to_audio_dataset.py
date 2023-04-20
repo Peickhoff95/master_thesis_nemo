@@ -84,3 +84,33 @@ def get_audio_dataset(
         trim=config.get('trim_silence', False),
     )
     return dataset
+
+def get_audioWhisper_dataset(
+        config: dict,
+        tokenizer,
+        augmentor: Optional['AudioAugmentor'] = None,
+        preprocessor: Optional['AudioPreprocessor'] = None) -> audio_to_audio.AudioToAudioDataset:
+    """
+    Instantiates an AudioToAudioDataset.
+
+    Args:
+        config: Config of the AudioToAudioDataset.
+        augmentor: Optional AudioAugmentor object for augmentations on audio data.
+        preprocessor Optional AudioPreprocessor object for preprocessing audio features.
+
+    Returns:
+        An instance of AudioToAudioDataset.
+    """
+
+    dataset = audio_to_audio.AudioToAudioWhisperDataset(
+        manifest_filepath=config['manifest_filepath'],
+        tokenizer=tokenizer,
+        sample_rate=config['sample_rate'],
+        int_values=config.get('int_values', False),
+        augmentor=augmentor,
+        preprocessor=preprocessor,
+        max_duration=config.get('max_duration', None),
+        min_duration=config.get('min_duration', None),
+        trim=config.get('trim_silence', False),
+    )
+    return dataset

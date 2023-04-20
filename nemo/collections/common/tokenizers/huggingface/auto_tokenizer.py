@@ -68,7 +68,7 @@ class AutoTokenizer(TokenizerSpec):
                 )
             elif merges_file is None:
                 self.tokenizer = AUTOTOKENIZER.from_pretrained(
-                    pretrained_model_name_or_path=pretrained_model_name, vocab_file=vocab_file, use_fast=use_fast, cache_dir='/data/4eickhof/cache/'
+                    pretrained_model_name_or_path=pretrained_model_name, vocab_file=vocab_file, use_fast=use_fast,
                 )
             else:
                 self.tokenizer = AUTOTOKENIZER.from_pretrained(

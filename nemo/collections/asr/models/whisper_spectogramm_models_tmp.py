@@ -34,13 +34,14 @@ from nemo.collections.asr.parts.preprocessing.perturb import process_augmentatio
 from nemo.core.classes.common import PretrainedModelInfo, typecheck
 from nemo.core.neural_types import AudioSignal, LabelsType, LengthsType, LogprobsType, NeuralType, SpectrogramType
 from nemo.utils import logging
-import ipdb
 
-__all__ = ['EncDecCTCSpecModel']
+import whisper
+
+__all__ = ['EncDecSpecWhisperModel']
 
 
-class EncDecCTCSpecModel(ASRModel, ExportableEncDecModel, ASRModuleMixin):
-    """Base class for encoder decoder CTC-based models."""
+class EncDecSpecWhisperModel(ASRModel, ExportableEncDecModel, ASRModuleMixin):
+    """Base class for whisper ASR model with spectral reconstruction."""
 
     def __init__(self, cfg: DictConfig, trainer: Trainer = None):
         # Get global rank and total number of GPU workers for IterableDataset partitioning, if applicable
@@ -50,8 +51,8 @@ class EncDecCTCSpecModel(ASRModel, ExportableEncDecModel, ASRModuleMixin):
             self.world_size = trainer.world_size
 
         super().__init__(cfg=cfg, trainer=trainer)
-        self.preprocessor = EncDecCTCSpecModel.from_config_dict(self._cfg.preprocessor)
-        self.encoder = EncDecCTCSpecModel.from_config_dict(self._cfg.encoder)
+        self.preprocessor = EncDecSpecWhisperModel.from_config_dict(self._cfg.preprocessor)
+        self.encoder = EncDecSpecWhisperModel.from_config_dict(self._cfg.encoder)
 
         with open_dict(self._cfg):
             if "feat_in" not in self._cfg.decoder or (
@@ -69,16 +70,18 @@ class EncDecCTCSpecModel(ASRModel, ExportableEncDecModel, ASRModuleMixin):
                 )
                 cfg.decoder["num_classes"] = len(self.cfg.decoder.vocabulary)
 
-        self.decoder = EncDecCTCSpecModel.from_config_dict(self._cfg.decoder)
+        self.decoder = EncDecSpecWhisperModel.from_config_dict(self._cfg.decoder)
 
-        self.loss = CTCLoss(
-            num_classes=self.decoder.num_classes_with_blank - 1,
-            zero_infinity=True,
-            reduction=self._cfg.get("ctc_reduction", "mean_batch"),
-        )
+        self.whisper_options = whisper.DecodingOptions(language=self._cfg.whisper.language,without_timestamps=True)
+        self.whisper = whisper.load_model(self._cfg.whisper.model)
+        self.whisper_tokenizer = whisper.tokenizer.get_tokenizer(True, language=self._cfg.lang, task=self.options.task)
+        self.whisper.train(mode=False)
+
+
+        self.loss = torch.nn.CrossEntropyLoss(ignore_index=-100)
 
         if hasattr(self._cfg, 'spec_augment') and self._cfg.spec_augment is not None:
-            self.spec_augmentation = EncDecCTCSpecModel.from_config_dict(self._cfg.spec_augment)
+            self.spec_augmentation = EncDecSpecWhisperModel.from_config_dict(self._cfg.spec_augment)
         else:
             self.spec_augmentation = None
 
@@ -234,7 +237,7 @@ class EncDecCTCSpecModel(ASRModel, ExportableEncDecModel, ASRModuleMixin):
             new_decoder_config['num_classes'] = len(new_vocabulary)
 
             del self.decoder
-            self.decoder = EncDecCTCSpecModel.from_config_dict(new_decoder_config)
+            self.decoder = EncDecSpecWhisperModel.from_config_dict(new_decoder_config)
             del self.loss
             self.loss = CTCLoss(
                 num_classes=self.decoder.num_classes_with_blank - 1,
@@ -447,6 +450,8 @@ class EncDecCTCSpecModel(ASRModel, ExportableEncDecModel, ASRModuleMixin):
         encoded, encoded_len = self.encoder(audio_signal=processed_signal, length=processed_signal_length)
         log_probs = self.decoder(encoder_output=encoded)
         greedy_predictions = log_probs.argmax(dim=-1, keepdim=False)
+        
+        
 
         return log_probs, encoded_len, greedy_predictions
 

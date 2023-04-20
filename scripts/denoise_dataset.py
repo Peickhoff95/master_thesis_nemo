@@ -21,7 +21,7 @@ def denoise_audiofiles(audiofiles_paths: List[str], conf_path: str, chkpt_path: 
 
     rec_config = OmegaConf.load(conf_path)
     rec_model = nemo_asr.models.ReconstructionModel(cfg=rec_config.model, trainer=None)
-    chkpt = torch.load(chkpt_path)
+    chkpt = torch.load(chkpt_path, map_location=torch_device)
     rec_model.load_state_dict(chkpt['state_dict'])
 
     rec_model.to(torch_device)
@@ -69,8 +69,16 @@ if __name__ == "__main__":
             os.makedirs(manifest_dir)
         
         manifest_df = pd.read_json(manifest_path, lines=True)
+        input_key = ''
+        if hasattr(manifest_df, 'input'):
+            input_key = 'input'
+        elif hasattr(manifest_df, 'audio_filepath'):
+            input_key = 'audio_filepath'
+        else:
+            print(f'No valid input key found in {manifest_path} !')
+            continue
         outfile_paths = denoise_audiofiles(
-            manifest_df['input'],
+            manifest_df[input_key],
             conf_path=conf_path, 
             chkpt_path=chkpt_path,
             out_dir=manifest_dir,
@@ -78,7 +86,7 @@ if __name__ == "__main__":
             batch_size=batch_size, 
             num_workers=num_workers,
             )
-        manifest_df['input'] = outfile_paths
+        manifest_df[input_key] = outfile_paths
         
         manifest_outpath = os.path.join(out_dir,manifest_path.split('/')[-1])
         manifest_df.to_json(manifest_outpath, orient='records', lines=True)    

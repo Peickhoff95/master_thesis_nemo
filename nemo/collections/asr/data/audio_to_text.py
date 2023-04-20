@@ -35,6 +35,8 @@ from nemo.core.neural_types.elements import ProbsType
 from nemo.utils import logging
 from nemo.utils.decorators import deprecated
 
+import whisper
+
 __all__ = [
     'AudioToCharDataset',
     'AudioToCharWithDursF0Dataset',
@@ -42,7 +44,8 @@ __all__ = [
     'AudioToBPEDataset',
     'TarredAudioToCharDataset',
     'TarredAudioToBPEDataset',
-]
+    'AudioToBPEWhisperDataset',
+    ]
 
 
 def _speech_collate_fn(batch, pad_id):
@@ -165,6 +168,35 @@ class ASRManifestProcessor:
             tl += 1
 
         return t, tl
+
+class ASRWhisperManifestProcesor(ASRManifestProcessor):
+    def __init__(
+        self,
+        manifest_filepath: str,
+        parser: Union[str, Callable],
+        max_duration: Optional[float] = None,
+        min_duration: Optional[float] = None,
+        max_utts: int = 0,
+        bos_id: Optional[int] = None,
+        eos_id: Optional[int] = None,
+        pad_id: int = 0,
+        index_by_file_id: bool = False,
+    ):
+        self.parser = parser
+
+        self.collection = collections.ASRAudioText(
+            manifests_files=manifest_filepath,
+            parser=parser,
+            min_duration=min_duration,
+            max_duration=max_duration,
+            max_number=max_utts,
+            index_by_file_id=index_by_file_id,
+        )
+
+        self.eos_id = eos_id
+        self.bos_id = bos_id
+        self.pad_id = pad_id
+
 
 
 def expand_audio_filepaths(audio_tar_filepaths, shard_strategy: str, world_size: int, global_rank: int):
@@ -972,6 +1004,218 @@ class AudioToBPEDataset(_AudioTextDataset):
             return_sample_id=return_sample_id,
         )
 
+class AudioToBPEWhisperDataset(_AudioTextDataset):
+    """
+    Dataset that loads tensors via a json file containing paths to audio
+    files, transcripts, and durations (in seconds). Each new line is a
+    different sample. Example below:
+    {"audio_filepath": "/path/to/audio.wav", "text_filepath":
+    "/path/to/audio.txt", "duration": 23.147}
+    ...
+    {"audio_filepath": "/path/to/audio.wav", "text": "the
+    transcription", "offset": 301.75, "duration": 0.82, "utt":
+    "utterance_id", "ctm_utt": "en_4156", "side": "A"}
+
+    In practice, the dataset and manifest used for character encoding and byte pair encoding
+    are exactly the same. The only difference lies in how the dataset tokenizes the text in
+    the manifest.
+
+    Args:
+        manifest_filepath: Path to manifest json as described above. Can
+            be comma-separated paths.
+        tokenizer: A subclass of the Tokenizer wrapper found in the common collection,
+            nemo.collections.common.tokenizers.TokenizerSpec. ASR Models support a subset of
+            all available tokenizers.
+        sample_rate (int): Sample rate to resample loaded audio to
+        int_values (bool): If true, load samples as 32-bit integers. Defauts to False.
+        augmentor (nemo.collections.asr.parts.perturb.AudioAugmentor): An AudioAugmentor
+            object used to augment loaded audio
+        max_duration: If audio exceeds this length, do not include in dataset
+        min_duration: If audio is less than this length, do not include
+            in dataset
+        max_utts: Limit number of utterances
+        trim: Whether to trim silence segments
+        use_start_end_token: Boolean which dictates whether to add [BOS] and [EOS]
+            tokens to beginning and ending of speech respectively.
+        return_sample_id (bool): whether to return the sample_id as a part of each sample
+    """
+
+    @property
+    def output_types(self) -> Optional[Dict[str, NeuralType]]:
+        """Returns definitions of module output ports.
+               """
+        return {
+                'audio_signal': NeuralType(('B', 'D', 'T'), AudioSignal()),
+            'a_sig_length': NeuralType(tuple('B'), LengthsType()),
+            'transcripts': NeuralType(('B', 'T'), LabelsType()),
+            'transcript_length': NeuralType(tuple('B'), LengthsType()),
+            'dec_input_ids': NeuralType(('B', 'T'), LabelsType()),
+            'sample_id': NeuralType(tuple('B'), LengthsType(), optional=True),
+        }
+
+    def __init__(
+        self,
+        manifest_filepath: str,
+        tokenizer,
+        sample_rate: int,
+        int_values: bool = False,
+        augmentor: 'nemo.collections.asr.parts.perturb.AudioAugmentor' = None,
+        preprocessor: 'nemo.collections.asr.modules.audio_preprocessing.AudioToMelSpectrogramPreprocessor' = None,
+        max_duration: Optional[int] = None,
+        min_duration: Optional[int] = None,
+        max_utts: int = 0,
+        trim: bool = False,
+        use_start_end_token: bool = True,
+        return_sample_id: bool = False,
+        n_frames: int = 3000,
+    ):
+        if use_start_end_token and hasattr(tokenizer, 'bos_token'):
+            bos_id = tokenizer.bos_id
+        else:
+            bos_id = None
+
+        if use_start_end_token and hasattr(tokenizer, 'eos_token'):
+            eos_id = tokenizer.eos_id
+        else:
+            eos_id = None
+
+        if hasattr(tokenizer, 'pad_token'):
+            pad_id = tokenizer.pad_id
+        else:
+            pad_id = 0
+
+        class TokenizerWrapper:
+            def __init__(self, tokenizer):
+                if isinstance(tokenizer, tokenizers.aggregate_tokenizer.AggregateTokenizer):
+                    self.is_aggregate = True
+                else:
+                    self.is_aggregate = False
+                self._tokenizer = tokenizer
+
+            def __call__(self, *args):
+                t = self._tokenizer.encode(*args)
+                return t
+        
+        if preprocessor is not None:
+            self.preprocessor = preprocessor
+        else:
+            self.preprocessor = None
+       
+        self.tokenizer = tokenizer
+        self.n_frames = n_frames
+
+        super().__init__(
+            manifest_filepath=manifest_filepath,
+            parser=TokenizerWrapper(tokenizer),
+            sample_rate=sample_rate,
+            int_values=int_values,
+            augmentor=augmentor,
+            max_duration=max_duration,
+            min_duration=min_duration,
+            max_utts=max_utts,
+            bos_id=bos_id,
+            eos_id=eos_id,
+            pad_id=pad_id,
+            trim=trim,
+            return_sample_id=return_sample_id,
+        )
+
+    def _collate_fn(self, batch):
+        """collate batch of audio sig, audio len, tokens, tokens len
+        Args:
+            batch (Optional[FloatTensor], Optional[LongTensor], LongTensor,
+                   LongTensor):  A tuple of tuples of signal, signal lengths,
+                   encoded tokens, and encoded tokens length.  This collate func
+                   assumes the signals are 1d torch tensors (i.e. mono audio).
+        """
+        packed_batch = list(zip(*batch))
+        if len(packed_batch) == 6:
+            _, audio_lengths, _, tokens_lengths, dec_input_ids, sample_ids = packed_batch
+        elif len(packed_batch) == 5:
+            sample_ids = None
+            _, audio_lengths, _, tokens_lengths, dec_input_ids = packed_batch
+        else:
+            raise ValueError("Expects 5 or 6 tensors in the batch!")
+        max_audio_len = 0
+        has_audio = audio_lengths[0] is not None
+        if has_audio:
+            max_audio_len = max(audio_lengths).item()
+        max_tokens_len = max(tokens_lengths).item()
+
+        audio_signal, tokens, dec_input_ids = [], [], []
+        for b in batch:
+            if len(b) == 6:
+                sig, sig_len, tokens_i, tokens_i_len, dec_input_i, _ = b
+            else:
+                sig, sig_len, tokens_i, tokens_i_len, dec_input_i = b
+            if has_audio:
+                sig_len = sig_len.item()
+                if sig_len < max_audio_len:
+                    pad = (0, max_audio_len - sig_len)
+                    sig = torch.nn.functional.pad(sig, pad)
+                audio_signal.append(sig)
+            tokens_i_len = tokens_i_len.item()
+            if tokens_i_len < max_tokens_len:
+                pad = (0, max_tokens_len - tokens_i_len)
+                tokens_i = torch.nn.functional.pad(tokens_i, pad, value=-100)
+                dec_input_i = torch.nn.functional.pad(dec_input_i, pad, value=50257)
+            tokens.append(tokens_i)
+            dec_input_ids.append(dec_input_i)
+
+        if has_audio:
+            audio_signal = torch.stack(audio_signal)
+            audio_lengths = torch.stack(audio_lengths)
+        else:
+            audio_signal, audio_lengths = None, None
+        tokens = torch.stack(tokens)
+        dec_input_ids = torch.stack(dec_input_ids)
+        tokens_lengths = torch.stack(tokens_lengths)
+        if sample_ids is None:
+            return audio_signal, audio_lengths, tokens, tokens_lengths, dec_input_ids
+        else:
+            sample_ids = torch.tensor(sample_ids, dtype=torch.int32)
+            return audio_signal, audio_lengths, tokens, tokens_lengths, dec_input_ids, sample_ids
+    
+    def __getitem__(self, index):
+        sample = self.manifest_processor.collection[index]
+        offset = sample.offset
+
+        if offset is None:
+            offset = 0
+
+        features = self.featurizer.process(
+            sample.audio_file, offset=offset, duration=sample.duration, trim=self.trim, orig_sr=sample.orig_sr
+        )
+        #features = whisper.pad_or_trim(features)
+        f, fl = features, torch.tensor(features.shape[0]).long()
+        f = f[None, :]
+        fl = fl[None]
+        if self.preprocessor is not None:
+            processed_input_signal, processed_signal_length = self.preprocessor(
+                input_signal=f, length=fl,
+            )
+            f, fl = processed_input_signal[0], processed_signal_length[0]
+
+        #if fl > self.n_frames:
+        #    f = f.index_select(dim=-1, index=torch.arange(self.n_frames, device=f.device))
+
+        #if fl < self.n_frames:
+        #    pad_widths = [(0, 0)] * f.ndim
+        #    pad_widths[-1] = (0, self.n_frames - f.shape[-1])
+        #    f = torch.nn.functional.pad(f, [pad for sizes in pad_widths[::-1] for pad in sizes])
+        #fl = torch.tensor(self.n_frames).long()
+
+        t, tl = self.manifest_processor.process_text_by_sample(sample=sample)
+        t = [*self.tokenizer.sot_sequence_including_notimestamps] + t
+        d = t[1:] + [self.tokenizer.eot]
+        tl += 1
+
+        if self.return_sample_id:
+            output = f, fl, torch.tensor(t).long(), torch.tensor(tl).long(), torch.tensor(d), index
+        else:
+            output = f, fl, torch.tensor(t).long(), torch.tensor(tl).long(), torch.tensor(d)
+
+        return output
 
 class _TarredAudioToTextDataset(IterableDataset):
     """

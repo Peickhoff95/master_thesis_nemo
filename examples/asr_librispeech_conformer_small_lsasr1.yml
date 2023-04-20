@@ -1,0 +1,5 @@
+manifest_path: '/home/eickhoff/data/4eickhof/data/LibriSpeech/train_clean_100.json,/home/eickhoff/data/4eickhof/data/LibriSpeech/train_clean_360.json,/home/eickhoff/data/4eickhof/data/LibriSpeech/train_other_500.json,/home/eickhoff/data/4eickhof/data/LibriSpeech/dev_clean.json,/home/eickhoff/data/4eickhof/data/LibriSpeech/dev_other.json,/home/eickhoff/data/4eickhof/data/LibriSpeech/test_clean.json,/home/eickhoff/data/4eickhof/data/LibriSpeech/test_other.json' 
+expdir_path: '/home/eickhoff/data/4eickhof/repos/master_thesis_nemo/experiments/Conformer-Small-ASR-LibriSpeech/2022-09-21_18-55-33/'
+asr:
+        config_path: '/home/eickhoff/data/4eickhof/repos/master_thesis_nemo/pretrained_models/conformer_ctc_small_asr_libri_lsasr1.yml'
+        checkpoint_path: '/home/eickhoff/data/4eickhof/repos/master_thesis_nemo/experiments/Conformer-Small-ASR-LibriSpeech/2022-09-21_18-55-33/checkpoints/Conformer-Small-ASR-LibriSpeech--val_loss=10.3526-epoch=96.ckpt'

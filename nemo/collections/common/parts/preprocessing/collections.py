@@ -219,7 +219,7 @@ class ASRAudioText(AudioText):
 
 class ASRSpectogrammText(_Collection):
 
-    OUTPUT_TYPE = collections.namedtuple('AudioTextEntity', 'input target duration text text_tokens noise_type snr orig_sr')
+    OUTPUT_TYPE = collections.namedtuple('SpectogrammTextEntity', 'audio_filepath duration text text_tokens offset')
 
     def __init__(self,
                  manifest_files,
@@ -257,14 +257,11 @@ class ASRSpectogrammText(_Collection):
 
             row['orig_sr'] = 16000
             data.append(output_type(
-                row['input'],
-                row['target'],
+                row['audio_filepath'],
                 row['duration'],
                 row['text'],
                 row['text_tokens'],
-                row['noise_type'],
-                row['snr'],
-                row['orig_sr']
+                None,
             ))
 
         super().__init__(data)

@@ -23,7 +23,7 @@ from omegaconf.listconfig import ListConfig
 from pytorch_lightning.callbacks import BasePredictionWriter
 from torch.utils.data import ChainDataset
 
-from nemo.collections.asr.data import spectogramm_to_text, spectogramm_to_text_dali
+from nemo.collections.asr.data import spectogramm_to_text
 from nemo.utils import logging
 
 
@@ -105,7 +105,7 @@ def get_char_dataset(config: dict, augmentor: Optional['AudioAugmentor'] = None)
 
 def get_bpe_dataset(
     config: dict, tokenizer: 'TokenizerSpec', augmentor: Optional['AudioAugmentor'] = None
-) -> spectogramm_to_text.AudioToBPEDataset:
+) -> spectogramm_to_text.SpectogrammToBPEDataset:
     """
     Instantiates a Byte Pair Encoding / Word Piece Encoding based AudioToBPEDataset.
 
